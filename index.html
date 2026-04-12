@@ -27,22 +27,36 @@ body{background:var(--bg);color:var(--t);font-family:'Noto Sans TC','Microsoft J
 .pill{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:99px;border:1px solid var(--bd);font-size:10px;color:var(--t2);margin-top:3px}
 .dot{width:6px;height:6px;border-radius:50%}
 .dot.on{background:var(--g);box-shadow:0 0 7px var(--g)}.dot.off{background:var(--r);box-shadow:0 0 7px var(--r)}
+.gear-btn{background:none;border:1px solid var(--bd);border-radius:8px;padding:6px 12px;color:var(--t2);cursor:pointer;font-size:18px;transition:all .2s;line-height:1}
+.gear-btn:hover{color:var(--c);border-color:var(--c);box-shadow:var(--gc)}
 
-/* ─ CONFIG ─ */
-.cfg{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:9px 20px;background:var(--bg1);border-bottom:1px solid var(--bd)}
-.cfg label{font-size:11px;color:var(--t2);white-space:nowrap}
-.cfg input{background:rgba(0,0,0,.4);border:1px solid var(--bd);border-radius:6px;padding:6px 11px;color:var(--c);font-family:monospace;font-size:12px;outline:none;width:280px;transition:border-color .2s}
-.cfg input:focus{border-color:var(--c)}
+/* ─ SETTINGS MODAL ─ */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--bg1);border:1px solid rgba(0,212,255,.4);border-radius:16px;padding:28px;width:min(460px,92vw);box-shadow:0 24px 64px rgba(0,0,0,.6),0 0 0 1px rgba(0,212,255,.05)}
+.modal-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.modal-hd h3{color:var(--c);font-size:16px;font-weight:900;letter-spacing:1px}
+.modal-close{background:none;border:1px solid var(--bd);color:var(--t2);font-size:16px;cursor:pointer;padding:3px 9px;border-radius:6px;line-height:1;transition:all .2s}
+.modal-close:hover{color:var(--t);border-color:var(--t2)}
+.modal-row{margin-bottom:16px}
+.modal-lbl{font-size:11px;color:var(--t2);margin-bottom:6px;letter-spacing:.5px}
+.modal-inp{background:rgba(0,0,0,.4);border:1px solid var(--bd);border-radius:8px;padding:9px 12px;color:var(--c);font-family:monospace;font-size:12px;outline:none;width:100%;transition:border-color .2s}
+.modal-inp:focus{border-color:var(--c);box-shadow:0 0 0 2px rgba(0,212,255,.1)}
+.modal-hint{font-size:10px;color:var(--t2);margin-top:5px}
+.modal-hint a{color:var(--c);text-decoration:none}
+.modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--bd)}
+.modal-upd{font-size:10px;color:var(--t2);text-align:center;margin-top:10px;min-height:14px}
 select.sel{background:rgba(0,0,0,.4);border:1px solid var(--bd);color:var(--c);padding:6px 9px;border-radius:6px;outline:none;cursor:pointer;font-size:11px}
 select.sel:focus{border-color:var(--c)}
-.btn{padding:6px 16px;border-radius:6px;border:1px solid;cursor:pointer;font-size:11px;font-weight:700;transition:all .2s;white-space:nowrap}
+.btn{padding:7px 16px;border-radius:7px;border:1px solid;cursor:pointer;font-size:12px;font-weight:700;transition:all .2s;white-space:nowrap}
 .btn-s{border-color:var(--c);background:rgba(0,212,255,.08);color:var(--c)}.btn-s:hover{background:rgba(0,212,255,.2);box-shadow:var(--gc)}
 .btn-r{border-color:var(--g);background:rgba(0,255,136,.08);color:var(--g)}.btn-r:hover{background:rgba(0,255,136,.2);box-shadow:var(--gg)}
-.upd{font-size:10px;color:var(--t2)}
+.btn-n{border-color:var(--t2);background:transparent;color:var(--t2)}.btn-n:hover{color:var(--t);border-color:var(--t)}
 
 /* ─ SEC HEADER ─ */
 .sec-hd{display:flex;align-items:center;gap:8px;padding:12px 20px 6px;font-size:11px;letter-spacing:2px;color:var(--t2);text-transform:uppercase}
 .sec-hd::after{content:'';flex:1;height:1px;background:var(--bd)}
+.sec-hd-date{font-size:12px;color:var(--t);letter-spacing:.5px;text-transform:none;font-weight:700;white-space:nowrap}
 
 /* ─ WEEK STRIP ─ */
 .week{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;padding:0 20px 14px}
@@ -102,7 +116,6 @@ select.sel:focus{border-color:var(--c)}
 .tch.hi{border-color:rgba(0,212,255,.5);background:rgba(0,212,255,.1);color:var(--c)}
 .tch.lo{border-color:rgba(60,90,140,.5);background:rgba(60,90,140,.1);color:#8899bb}
 .tch.past{opacity:.4}
-/* Tide table */
 .tide-table-wrap{margin-top:8px}
 .tide-table-hd{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .tide-table-hd span{font-size:10px;color:var(--t2)}
@@ -118,40 +131,103 @@ select.sel:focus{border-color:var(--c)}
 .wx-lbl{font-size:9px;color:var(--t2);margin-bottom:3px}
 .wx-val{font-size:22px;font-weight:800;color:var(--c);line-height:1}
 .wx-unit{font-size:10px;color:var(--t2);font-weight:400}
-.wx-bot{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.wx-bot{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px}
 .wx-bot-cell{background:rgba(0,0,0,.2);border-radius:7px;padding:8px 10px;font-size:11px}
 .wx-bot-lbl{font-size:9px;color:var(--t2);margin-bottom:3px}
 .wx-bot-val{font-size:13px;font-weight:700;color:var(--t)}
+/* Weekly wx strip */
+.wx-week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:6px}
+.wx-day{background:rgba(0,0,0,.25);border-radius:7px;padding:6px 4px;text-align:center;border:1px solid var(--bd)}
+.wx-day.wx-today{border-color:rgba(0,212,255,.5);background:rgba(0,212,255,.06)}
+.wx-day-name{font-size:9px;color:var(--t2);margin-bottom:3px}
+.wx-day-icon{font-size:16px;line-height:1.2;margin-bottom:2px}
+.wx-day-hi{font-size:11px;font-weight:800;color:var(--o)}
+.wx-day-lo{font-size:10px;color:#5a8ab0}
+.wx-day-pop{font-size:9px;color:#7aaac0;margin-top:2px}
+.wx-day-uv{font-size:9px;color:var(--t2)}
+.wx-sep{height:1px;background:var(--bd);margin:8px 0}
 
-/* ─ TACTICS ─ */
-.tv{font-size:14px;font-weight:800;color:var(--g);margin:6px 0}
-.td{font-size:11px;color:var(--t2);line-height:1.55}
-.fish-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
-.fc{padding:3px 10px;border-radius:99px;font-size:11px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3)}
-.fc.star{background:rgba(0,255,136,.12);border-color:var(--g);color:var(--g);font-weight:700}
-.gear-rows{display:flex;flex-direction:column;gap:4px;margin-top:4px}
-.gr2{display:flex;gap:6px;font-size:11px}
-.gk{color:var(--t2);min-width:34px;flex-shrink:0}
-.gv{color:var(--t);line-height:1.4}
-.bait-rows{list-style:none;display:flex;flex-direction:column;gap:4px;margin-top:4px}
-.bi{padding:4px 9px;font-size:11px;line-height:1.4;background:rgba(255,140,0,.06);border-left:2px solid var(--o);border-radius:0 4px 4px 0}
+/* ─ DEPTH SCHEDULE ─ */
+.depth-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:4px}
+.depth-table th{color:var(--t2);font-weight:600;padding:3px 6px;text-align:left;border-bottom:1px solid var(--bd);font-size:9px;letter-spacing:.5px}
+.depth-table td{padding:3px 6px;border-bottom:1px solid rgba(24,32,56,.4);line-height:1.3}
+.depth-table tr.now-hr td{background:rgba(0,212,255,.1);font-weight:700}
+.depth-table tr.now-hr td:first-child{color:var(--y)}
+
+/* ─ FISH DETAIL ─ */
+.fish-item{display:flex;flex-direction:column;gap:2px;padding:6px 8px;border-radius:7px;background:rgba(0,0,0,.2);border:1px solid var(--bd);margin-bottom:5px}
+.fish-item.star{border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.05)}
+.fish-name{font-size:13px;font-weight:800;display:flex;align-items:center;gap:5px}
+.fish-reason{font-size:10px;color:var(--t2);line-height:1.5;margin-top:2px}
+
+/* ─ GEAR DETAIL ─ */
+.gear-item{display:flex;flex-direction:column;gap:2px;padding:5px 8px;border-radius:6px;background:rgba(0,0,0,.2);border:1px solid var(--bd);margin-bottom:4px}
+.gear-kv{display:flex;gap:6px;font-size:11px}
+.gear-k{color:var(--t2);min-width:38px;flex-shrink:0;font-size:10px}
+.gear-v{color:var(--t);font-weight:700}
+.gear-why{font-size:10px;color:var(--t2);line-height:1.45;padding-left:44px;margin-top:1px}
+
+/* ─ BAIT ─ */
+.bait-top{list-style:none;display:flex;flex-direction:column;gap:4px}
+.bi{padding:5px 9px;font-size:11px;line-height:1.4;background:rgba(255,140,0,.06);border-left:2px solid var(--o);border-radius:0 4px 4px 0}
+.bi.top1{border-left-color:var(--y);background:rgba(255,215,0,.08);font-weight:700}
+.bait-sep{height:1px;background:var(--bd);margin:10px 0 8px}
+.bait-enc-title{font-size:9px;letter-spacing:2px;color:var(--t2);text-transform:uppercase;margin-bottom:7px}
+.bait-enc{display:flex;flex-direction:column;gap:4px}
+.be{padding:5px 8px;border-radius:6px;background:rgba(0,0,0,.2);border:1px solid var(--bd);font-size:10px}
+.be-name{font-weight:700;color:var(--t);margin-bottom:2px}
+.be-desc{color:var(--t2);line-height:1.5}
 
 /* ─ UTILS ─ */
 .ld{display:flex;align-items:center;gap:7px;padding:10px 0;color:var(--t2);font-size:11px}
 .sp{width:16px;height:16px;border:2px solid var(--bd);border-top-color:var(--c);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 .foot{text-align:center;padding:12px;font-size:10px;color:var(--t2);letter-spacing:1px}
-@media(max-width:1100px){.row3{grid-template-columns:1fr 1fr}.row4{grid-template-columns:1fr 1fr}.week{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:640px){.row3,.row4{grid-template-columns:1fr}.week{grid-template-columns:repeat(2,1fr)}.hdr{flex-direction:column}}
+@media(max-width:1200px){.row3{grid-template-columns:220px 1fr 1fr}.week{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:1000px){.row3{grid-template-columns:1fr 1fr}.row4{grid-template-columns:1fr 1fr}.week{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:640px){.row3,.row4{grid-template-columns:1fr}.week{grid-template-columns:repeat(2,1fr)}.hdr{flex-direction:column}.wx-week{grid-template-columns:repeat(4,1fr)}}
 </style>
 </head>
 <body>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h3>⚙️ 系統設定</h3>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-row">
+      <div class="modal-lbl">🔑 CWA API KEY</div>
+      <input class="modal-inp" type="text" id="apiIn" placeholder="CWA-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX" spellcheck="false">
+      <div class="modal-hint">申請 API Key：<a href="https://opendata.cwa.gov.tw" target="_blank">opendata.cwa.gov.tw</a>　免費，即時取得</div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-lbl">🕐 野生池潮汐延遲</div>
+      <select id="delayPick" class="sel" style="width:100%;padding:9px 12px" onchange="onDelayChange()">
+        <option value="0">0 h（無延遲）</option>
+        <option value="0.5">0.5 h</option>
+        <option value="1">1 h</option>
+        <option value="1.5" selected>1.5 h（建議）</option>
+        <option value="2">2 h</option>
+        <option value="2.5">2.5 h</option>
+        <option value="3">3 h</option>
+      </select>
+      <div class="modal-hint">野生池相對海邊潮汐的水位滯後時間，佳冬野生池建議 1.5 h</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-n" onclick="closeSettings()">取消</button>
+      <button class="btn btn-r" onclick="saveKey()">✅ 儲存並更新資料</button>
+    </div>
+    <div class="modal-upd" id="updLbl"></div>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header class="hdr">
   <div class="hdr-l">
     <h1>🎣 佳冬野生池 · 實戰釣魚儀表板</h1>
-    <p>Jiādōng Wild Pond · Tactical Fishing Intelligence System v3.0</p>
+    <p>Jiādōng Wild Pond · Tactical Fishing Intelligence System v4.0</p>
   </div>
   <div class="hdr-r">
     <div>
@@ -161,38 +237,32 @@ select.sel:focus{border-color:var(--c)}
         <span class="pill"><span class="dot off" id="dotEl"></span><span id="connTxt">未連線</span></span>
       </div>
     </div>
+    <button class="gear-btn" onclick="openSettings()" title="系統設定">⚙️</button>
   </div>
 </header>
 
-<!-- CONFIG -->
-<div class="cfg">
-  <label>🔑 API KEY</label>
-  <input type="text" id="apiIn" placeholder="CWA-XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX">
-  <button class="btn btn-s" onclick="saveKey()">儲存金鑰</button>
-  <label>🕐 池塘延遲</label>
-  <select id="delayPick" class="sel" onchange="onDelayChange()">
-    <option value="0">0 h（無延遲）</option><option value="0.5">0.5 h</option><option value="1">1 h</option>
-    <option value="1.5" selected>1.5 h（建議）</option><option value="2">2 h</option><option value="2.5">2.5 h</option><option value="3">3 h</option>
-  </select>
-  <button class="btn btn-r" onclick="loadAll()">🔄 更新資料</button>
-  <span class="upd" id="updLbl">尚未更新</span>
-</div>
-
-<!-- WEEK SECTION -->
-<div class="sec-hd" style="padding-right:20px">
-  📅 釣魚推薦指數｜魚群越多越好釣
-  <select id="weekSel" class="sel" style="margin-left:10px;font-size:10px;" onchange="onWeekChange()">
+<!-- REFRESH BAR -->
+<div style="display:flex;align-items:center;gap:10px;padding:7px 20px;background:var(--bg1);border-bottom:1px solid var(--bd)">
+  <select id="weekSel" class="sel" style="font-size:10px" onchange="onWeekChange()">
     <option value="0">本週（今天起 7 日）</option>
     <option value="7">下一週（+7 日）</option>
     <option value="14">下下週（+14 日）</option>
   </select>
+  <button class="btn btn-s" style="padding:5px 14px" onclick="loadAll()">🔄 更新資料</button>
+  <span style="font-size:10px;color:var(--t2);flex:1" id="connStatusLbl"></span>
 </div>
+
+<!-- WEEK SECTION -->
+<div class="sec-hd">📅 釣魚推薦指數｜魚群越多越好釣</div>
 <div class="week" id="weekStrip">
   <div class="ld" style="grid-column:1/-1"><div class="sp"></div>計算預測中...</div>
 </div>
 
 <!-- ANALYSIS SECTION -->
-<div class="sec-hd">⚡ 當前即時分析</div>
+<div class="sec-hd">
+  ⚡ 當前即時分析
+  <span class="sec-hd-date" id="analysisDt"></span>
+</div>
 <div class="wrap">
   <div class="row3">
     <!-- SCORE RING -->
@@ -211,7 +281,7 @@ select.sel:focus{border-color:var(--c)}
         </div>
       </div>
       <div class="tags" id="tagsEl">
-        <div class="ld"><div class="sp"></div>請輸入 API Key</div>
+        <div class="ld"><div class="sp"></div>按右上角 ⚙️ 輸入 API Key</div>
       </div>
     </div>
 
@@ -222,15 +292,12 @@ select.sel:focus{border-color:var(--c)}
         <div class="tide-phase" id="tidePhase">計算中...</div>
       </div>
       <canvas id="tideCanvas"></canvas>
-      <!-- Today chips -->
       <div id="todayDateLbl" style="font-size:9px;color:var(--t2);margin-top:7px;"></div>
       <div class="tide-chips" id="tideChips"></div>
-      <!-- 7-day tide table -->
       <div class="tide-table-wrap">
         <div class="tide-table-hd">
-          <span>潮汐表</span>
-          <select id="tideDaySel" class="sel" style="font-size:10px;padding:3px 7px" onchange="renderTideTable()">
-          </select>
+          <span>潮汐表（當週）</span>
+          <select id="tideDaySel" class="sel" style="font-size:10px;padding:3px 7px" onchange="renderTideTable()"></select>
         </div>
         <table class="tide-table" id="tideTable">
           <thead><tr><th>潮型</th><th>時間（含延遲）</th><th>潮高</th></tr></thead>
@@ -241,28 +308,31 @@ select.sel:focus{border-color:var(--c)}
 
     <!-- WEATHER CARD -->
     <div class="card gg">
-      <div class="ct">☁️ 即時天氣｜佳冬鄉</div>
+      <div class="ct">☁️ 天氣｜佳冬鄉</div>
       <div id="wxPanel"><div class="ld"><div class="sp"></div>載入天氣資料...</div></div>
     </div>
   </div>
 
   <div class="row4">
+    <!-- DEPTH SCHEDULE -->
     <div class="card gc">
-      <div class="ct">📏 推薦釣棚</div>
-      <div class="tv" id="depthVal">計算中...</div>
-      <div class="td" id="depthDesc">根據潮汐相位與溫度動態調整</div>
+      <div class="ct">📏 推薦釣棚（每小時）</div>
+      <div id="depthSchedule"><div class="ld"><div class="sp"></div></div></div>
     </div>
+    <!-- FISH -->
     <div class="card gg">
-      <div class="ct">🐟 目標魚種</div>
-      <div class="fish-chips" id="fishChips"><div class="ld"><div class="sp"></div></div></div>
+      <div class="ct">🐟 今日目標魚種</div>
+      <div id="fishDetail"><div class="ld"><div class="sp"></div></div></div>
     </div>
+    <!-- GEAR -->
     <div class="card go">
       <div class="ct">⚙️ 武器配置</div>
-      <div class="gear-rows" id="gearRows"><div class="ld"><div class="sp"></div></div></div>
+      <div id="gearDetail"><div class="ld"><div class="sp"></div></div></div>
     </div>
+    <!-- BAIT -->
     <div class="card gy">
       <div class="ct">🦐 餌料策略</div>
-      <ul class="bait-rows" id="baitRows"><div class="ld"><div class="sp"></div></div></ul>
+      <div id="baitDetail"><div class="ld"><div class="sp"></div></div></div>
     </div>
   </div>
 </div>
@@ -272,15 +342,15 @@ select.sel:focus{border-color:var(--c)}
 <script>
 'use strict';
 
-// ── 嵌入潮汐資料（屏東縣佳冬鄉，22 日） ──────────────────────────────
+// ── 嵌入潮汐資料（屏東縣佳冬鄉，22 日）────────────────────────────────────
 const TR=[{"dt":"2026-04-12T15:46:00+08:00","type":"滿潮","height":48},{"dt":"2026-04-12T23:52:00+08:00","type":"乾潮","height":-22},{"dt":"2026-04-13T06:13:00+08:00","type":"滿潮","height":15},{"dt":"2026-04-13T09:59:00+08:00","type":"乾潮","height":7},{"dt":"2026-04-13T16:45:00+08:00","type":"滿潮","height":50},{"dt":"2026-04-14T00:18:00+08:00","type":"乾潮","height":-20},{"dt":"2026-04-14T06:18:00+08:00","type":"滿潮","height":23},{"dt":"2026-04-14T11:14:00+08:00","type":"乾潮","height":1},{"dt":"2026-04-14T17:37:00+08:00","type":"滿潮","height":50},{"dt":"2026-04-15T00:41:00+08:00","type":"乾潮","height":-16},{"dt":"2026-04-15T06:34:00+08:00","type":"滿潮","height":31},{"dt":"2026-04-15T12:15:00+08:00","type":"乾潮","height":-6},{"dt":"2026-04-15T18:26:00+08:00","type":"滿潮","height":49},{"dt":"2026-04-16T01:04:00+08:00","type":"乾潮","height":-12},{"dt":"2026-04-16T06:57:00+08:00","type":"滿潮","height":41},{"dt":"2026-04-16T13:11:00+08:00","type":"乾潮","height":-15},{"dt":"2026-04-16T19:15:00+08:00","type":"滿潮","height":44},{"dt":"2026-04-17T01:24:00+08:00","type":"乾潮","height":-8},{"dt":"2026-04-17T07:25:00+08:00","type":"滿潮","height":51},{"dt":"2026-04-17T14:06:00+08:00","type":"乾潮","height":-23},{"dt":"2026-04-17T20:04:00+08:00","type":"滿潮","height":36},{"dt":"2026-04-18T01:39:00+08:00","type":"乾潮","height":-4},{"dt":"2026-04-18T07:56:00+08:00","type":"滿潮","height":60},{"dt":"2026-04-18T15:02:00+08:00","type":"乾潮","height":-31},{"dt":"2026-04-18T20:55:00+08:00","type":"滿潮","height":26},{"dt":"2026-04-19T01:41:00+08:00","type":"乾潮","height":-2},{"dt":"2026-04-19T08:33:00+08:00","type":"滿潮","height":67},{"dt":"2026-04-19T16:00:00+08:00","type":"乾潮","height":-35},{"dt":"2026-04-19T21:49:00+08:00","type":"滿潮","height":15},{"dt":"2026-04-20T01:43:00+08:00","type":"乾潮","height":-2},{"dt":"2026-04-20T09:15:00+08:00","type":"滿潮","height":71},{"dt":"2026-04-20T17:02:00+08:00","type":"乾潮","height":-37},{"dt":"2026-04-20T22:50:00+08:00","type":"滿潮","height":4},{"dt":"2026-04-21T01:52:00+08:00","type":"乾潮","height":-4},{"dt":"2026-04-21T10:05:00+08:00","type":"滿潮","height":72},{"dt":"2026-04-21T18:10:00+08:00","type":"乾潮","height":-37},{"dt":"2026-04-22T11:04:00+08:00","type":"滿潮","height":69},{"dt":"2026-04-22T19:31:00+08:00","type":"乾潮","height":-35},{"dt":"2026-04-23T12:14:00+08:00","type":"滿潮","height":65},{"dt":"2026-04-23T20:56:00+08:00","type":"乾潮","height":-34},{"dt":"2026-04-24T13:33:00+08:00","type":"滿潮","height":60},{"dt":"2026-04-24T22:03:00+08:00","type":"乾潮","height":-33},{"dt":"2026-04-25T14:52:00+08:00","type":"滿潮","height":56},{"dt":"2026-04-25T22:54:00+08:00","type":"乾潮","height":-29},{"dt":"2026-04-26T05:34:00+08:00","type":"滿潮","height":12},{"dt":"2026-04-26T09:25:00+08:00","type":"乾潮","height":6},{"dt":"2026-04-26T16:03:00+08:00","type":"滿潮","height":51},{"dt":"2026-04-26T23:34:00+08:00","type":"乾潮","height":-24},{"dt":"2026-04-27T05:48:00+08:00","type":"滿潮","height":20},{"dt":"2026-04-27T10:58:00+08:00","type":"乾潮","height":1},{"dt":"2026-04-27T17:06:00+08:00","type":"滿潮","height":47},{"dt":"2026-04-28T00:06:00+08:00","type":"乾潮","height":-17},{"dt":"2026-04-28T06:09:00+08:00","type":"滿潮","height":28},{"dt":"2026-04-28T12:05:00+08:00","type":"乾潮","height":-5},{"dt":"2026-04-28T18:02:00+08:00","type":"滿潮","height":41},{"dt":"2026-04-29T00:33:00+08:00","type":"乾潮","height":-10},{"dt":"2026-04-29T06:31:00+08:00","type":"滿潮","height":36},{"dt":"2026-04-29T13:00:00+08:00","type":"乾潮","height":-11},{"dt":"2026-04-29T18:52:00+08:00","type":"滿潮","height":34},{"dt":"2026-04-30T00:53:00+08:00","type":"乾潮","height":-3},{"dt":"2026-04-30T06:54:00+08:00","type":"滿潮","height":44},{"dt":"2026-04-30T13:50:00+08:00","type":"乾潮","height":-16},{"dt":"2026-04-30T19:38:00+08:00","type":"滿潮","height":27},{"dt":"2026-05-01T01:04:00+08:00","type":"乾潮","height":0},{"dt":"2026-05-01T07:19:00+08:00","type":"滿潮","height":50},{"dt":"2026-05-01T14:37:00+08:00","type":"乾潮","height":-21},{"dt":"2026-05-01T20:21:00+08:00","type":"滿潮","height":19},{"dt":"2026-05-02T00:55:00+08:00","type":"乾潮","height":2},{"dt":"2026-05-02T07:46:00+08:00","type":"滿潮","height":55},{"dt":"2026-05-02T15:22:00+08:00","type":"乾潮","height":-24},{"dt":"2026-05-02T21:03:00+08:00","type":"滿潮","height":12},{"dt":"2026-05-03T00:41:00+08:00","type":"乾潮","height":1},{"dt":"2026-05-03T08:15:00+08:00","type":"滿潮","height":58},{"dt":"2026-05-03T16:07:00+08:00","type":"乾潮","height":-25},{"dt":"2026-05-03T21:47:00+08:00","type":"滿潮","height":6}];
 const TIDE=TR.map(e=>({...e,dt:new Date(e.dt)}));
 
-// ── STATE ──────────────────────────────────────────────────────────────
-let tideEvents=TIDE,wxRaw=null,weekOffset=0;
+// ── STATE ───────────────────────────────────────────────────────────────
+let tideEvents=TIDE,wxRaw=null,wxWeeklyRaw=null,weekOffset=0;
 const tanks=[];let rafId=null;
 
-// ── FISH SPECIES PER PHASE ─────────────────────────────────────────────
+// ── FISH SPECIES MAP & DETAILS ──────────────────────────────────────────
 const FISH_MAP={
   sanfen:['海鱺','瓜仔/鰆仔','金目鱸','紅甘','白鱸'],
   qifen:['海鱺','瓜仔/鰆仔','金目鱸','紅甘','白鱸'],
@@ -288,8 +358,38 @@ const FISH_MAP={
   flowing:['鱸魚','花身鯻','三角仔','吳郭魚'],
   default:['鱸魚','花身鯻','三角仔','吳郭魚']
 };
+const FISH_DETAIL={
+  '海鱺':    {en:'Cobia',      icon:'🐟', reason:'洄游性大型掠食魚。水流激增時主動追餌，衝擊力強；三/七分水期咬勁最猛，是池中霸主。'},
+  '瓜仔/鰆仔':{en:'Mackerel',  icon:'🐠', reason:'高速巡游掠食魚，喜追逐水流中的活餌與鮮魚片；流水期追咬積極，反應極快，建議鐵板或活蝦。'},
+  '金目鱸':  {en:'Barramundi', icon:'🐡', reason:'夜行性視覺掠食魚，感光細胞豐富，傍晚至黃昏（15–18 時）活性急升；流水送食物順流而下時機最佳。'},
+  '紅甘':    {en:'Yellowtail', icon:'🐟', reason:'大型洄游魚。七分水頂流時貼底高速巡游，需加重咬鉛、底層作釣才能有效接觸。'},
+  '白鱸':    {en:'Snook',      icon:'🐠', reason:'岸邊伏擊型掠食魚，藏於水草或礁石邊待機咬殺；流水期帶動小魚靠岸，觸發連咬。'},
+  '花身鯻':  {en:'Tigerperch', icon:'🐡', reason:'底棲雜食魚。停潮期底層缺氧時仍能耐受，咬餌穩定；蚯蚓或蝦肉丁效果最佳。'},
+  '吳郭魚':  {en:'Tilapia',    icon:'🐠', reason:'溫水適應力最強的魚種，高溫停潮期活性最高；軟粉餌或蝦肉對其最具誘惑力。'},
+  '鯽魚':    {en:'Crucian',    icon:'🐡', reason:'底層雜食魚。停潮水靜時主動在泥底覓食，香甜粉餌打窩效果顯著。'},
+  '草魚':    {en:'Grass Carp', icon:'🐟', reason:'草食性大型魚。停潮水清時在水草帶覓食，可用麵餌或草類誘釣，咬口輕。'},
+  '三角仔':  {en:'Anchovy',    icon:'🐠', reason:'中上層群聚性小型魚。流水帶動浮游生物時大量現身，成群入窩時咬況熱烈。'},
+  '鱸魚':    {en:'Sea Bass',   icon:'🐟', reason:'日夜均活躍的全方位掠食魚。流水期在中下層伏擊，活蝦或蝦形軟蟲最具效果，釣者最愛。'},
+};
 
-// ── INIT ───────────────────────────────────────────────────────────────
+// ── BAIT ENCYCLOPEDIA ───────────────────────────────────────────────────
+const BAIT_ENC=[
+  {name:'🦐 活蝦',       desc:'萬能首選餌。天然氣味＋活跳動作，對掠食魚觸發率極高。三/七分水期必備，勿去頭去殼。'},
+  {name:'🐟 活小魚',     desc:'丁香、吻仔魚等。流水期最有效，模擬自然獵物，大型掠食魚衝咬直接。'},
+  {name:'🎣 鐵板假餌',   desc:'金屬鐵板 15–40g。三/七分水時做速降動作觸發反射咬，對鰆仔/海鱺有奇效。'},
+  {name:'🦑 泥鰍形軟蟲', desc:'矽膠軟蟲貼底緩漂。七分水頂流時模擬底棲生物被衝走，大型底棲魚首選。'},
+  {name:'🌾 高保水粉餌', desc:'打窩聚魚用。香甜或腥味選其一，停潮期緩釋誘食成分，製造窩點氣味帶。'},
+  {name:'🪱 蚯蚓',       desc:'停潮期萬能底餌。氨基酸自然釋放吸引底棲魚，花身鯻/鯽魚最愛，價格低廉。'},
+  {name:'🦐 蝦肉丁',     desc:'鮮蝦切小丁。停潮緩流時緩慢釋放蛋白質氣味，吸引半徑廣，適合長時間守釣。'},
+  {name:'🐚 貝類肉',     desc:'牡蠣或蜆肉。底層血腥氣味持久，停潮期底棲魚最愛，對花身鯻效果絕佳。'},
+  {name:'🍞 麵包屑餌',   desc:'草食性魚種（草魚/吳郭魚）首選。水面撒撒引魚靠近後再用釣組，效率高。'},
+  {name:'🌿 水草碎餌',   desc:'草魚專用。取附近水草揉碎加香甜粉增味，停潮水清時最有效。'},
+  {name:'🦐 蝦形軟蟲',   desc:'全天候通用假餌。矽膠蝦型，可輕咬鉛慢拖底，鱸魚/花身鯻均受用，耐咬耐用。'},
+  {name:'🐟 小魚切片',   desc:'廣域誘食用。帶皮切片放血後使用，血腥味吸引廣泛魚種，流水期效果翻倍。'},
+  {name:'🌡️ 高溫特別注意', desc:'氣溫超過 30°C 時，天然餌易腐敗，每 10–15 分鐘必換新鮮餌，或改用矽膠假餌。'},
+];
+
+// ── INIT ────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
   const k=localStorage.getItem('cwa_key')||'';
   const d=localStorage.getItem('phase_delay')||'1.5';
@@ -303,45 +403,71 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(k) loadAll(); else recalc();
 });
 
+// ── CLOCK ────────────────────────────────────────────────────────────────
 function tickClock(){
   const n=new Date();
   document.getElementById('clockEl').textContent=n.toLocaleTimeString('zh-TW',{hour12:false});
   document.getElementById('dateEl').textContent=n.toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  const el=document.getElementById('analysisDt');
+  if(el) el.textContent=n.toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',weekday:'long'});
 }
-function saveKey(){const k=document.getElementById('apiIn').value.trim();if(!k){alert('請輸入有效的 CWA API Key');return;}localStorage.setItem('cwa_key',k);loadAll();}
-function onDelayChange(){const d=document.getElementById('delayPick').value;localStorage.setItem('phase_delay',d);renderWeek(tideEvents,parseFloat(d),weekOffset);recalc();renderTideTable();}
-function onWeekChange(){weekOffset=parseInt(document.getElementById('weekSel').value);renderWeek(tideEvents,parseFloat(document.getElementById('delayPick').value),weekOffset);}
 
-// ── BUILD TIDE DAY SELECTOR ────────────────────────────────────────────
+// ── SETTINGS ────────────────────────────────────────────────────────────
+function openSettings(){document.getElementById('settingsModal').classList.add('open');}
+function closeSettings(){document.getElementById('settingsModal').classList.remove('open');}
+function saveKey(){
+  const k=document.getElementById('apiIn').value.trim();
+  if(!k){alert('請輸入有效的 CWA API Key');return;}
+  localStorage.setItem('cwa_key',k);
+  loadAll();
+  closeSettings();
+}
+function onDelayChange(){
+  const d=document.getElementById('delayPick').value;
+  localStorage.setItem('phase_delay',d);
+  renderWeek(tideEvents,parseFloat(d),weekOffset);
+  recalc();renderTideTable();
+}
+function onWeekChange(){
+  weekOffset=parseInt(document.getElementById('weekSel').value);
+  renderWeek(tideEvents,parseFloat(document.getElementById('delayPick').value),weekOffset);
+}
+
+// ── TIDE TABLE: CURRENT WEEK (SUN–SAT) ──────────────────────────────────
 function buildTideDaySelector(){
   const sel=document.getElementById('tideDaySel');
   sel.innerHTML='';
   const now=new Date();
   const days=['日','一','二','三','四','五','六'];
+  // Find the Sunday of the current week
+  const dow=now.getDay(); // 0=Sun
+  const weekStart=new Date(now);
+  weekStart.setDate(now.getDate()-dow);
+  weekStart.setHours(0,0,0,0);
+  const todayStr=fmtDate(now);
   for(let i=0;i<7;i++){
-    const d=new Date(now);d.setDate(d.getDate()+i);
+    const d=new Date(weekStart);d.setDate(weekStart.getDate()+i);
     const ds=fmtDate(d);
     const opt=document.createElement('option');
     opt.value=ds;
-    opt.textContent=(i===0?'今天 ':'')+`週${days[d.getDay()]} ${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
+    const isToday=ds===todayStr;
+    opt.textContent=(isToday?'今天 ':'')+`週${days[d.getDay()]} ${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')}`;
     sel.appendChild(opt);
   }
-  sel.value=fmtDate(now);
+  sel.value=todayStr;
   renderTideTable();
 }
 function renderTideTable(){
   const delay=parseFloat(document.getElementById('delayPick').value);
   const sel=document.getElementById('tideDaySel');
-  const dayStr=sel.value;
-  if(!dayStr) return;
+  const dayStr=sel.value;if(!dayStr)return;
   const now=new Date();
   const tbody=document.getElementById('tideTableBody');
   const dayEvents=(tideEvents||[]).filter(e=>fmtDate(e.dt)===dayStr);
   if(!dayEvents.length){tbody.innerHTML='<tr><td colspan="3" style="color:var(--t2);text-align:center;padding:8px">無資料</td></tr>';return;}
   tbody.innerHTML=dayEvents.map(e=>{
     const adj=new Date(e.dt.getTime()+delay*3600000);
-    const hi=e.type==='滿潮';
-    const past=adj<now;
+    const hi=e.type==='滿潮',past=adj<now;
     const isNow=!past&&(adj.getTime()-now.getTime())<3600000;
     return `<tr class="${hi?'hi':'lo'}${isNow?' now-row':''}${past?' tch past':''}">
       <td>${hi?'🌊 滿潮':'↓ 乾潮'}</td>
@@ -351,26 +477,31 @@ function renderTideTable(){
   }).join('');
 }
 
-// ── FETCH ─────────────────────────────────────────────────────────────
+// ── FETCH ────────────────────────────────────────────────────────────────
 async function loadAll(){
   const key=localStorage.getItem('cwa_key')||document.getElementById('apiIn').value.trim();
   if(!key){setConn(false,'請先儲存 API Key');return;}
   setConn(null,'連線中...');
-  const [tR,wR]=await Promise.allSettled([
+  const [tR,wR,wkR]=await Promise.allSettled([
     apiFetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-A0021-001?Authorization=${encodeURIComponent(key)}&LocationName=${encodeURIComponent('屏東縣佳冬鄉')}`),
-    apiFetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-035?Authorization=${encodeURIComponent(key)}&LocationName=${encodeURIComponent('佳冬鄉')}`)
+    apiFetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-035?Authorization=${encodeURIComponent(key)}&LocationName=${encodeURIComponent('佳冬鄉')}`),
+    apiFetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-091?Authorization=${encodeURIComponent(key)}&LocationName=${encodeURIComponent('佳冬鄉')}`)
   ]);
   let msgs=[];
   if(tR.status==='fulfilled'){
     const p=parseTideApi(tR.value);
     if(p&&p.length){tideEvents=p;msgs.push('✅ 潮汐已更新');}
     else msgs.push('⚠️ 潮汐解析失敗，使用內建資料');
-  }else{msgs.push('⚠️ 潮汐 API 未連線，使用內建資料');}
-  if(wR.status==='fulfilled'){wxRaw=wR.value;msgs.push('✅ 天氣已更新');}
-  else{msgs.push('⚠️ 天氣 API：'+wR.reason);console.warn(wR.reason);}
+  }else msgs.push('⚠️ 潮汐 API 未連線，使用內建資料');
+  if(wR.status==='fulfilled'){wxRaw=wR.value;msgs.push('✅ 即時天氣');}
+  else msgs.push('⚠️ 即時天氣：'+wR.reason);
+  if(wkR.status==='fulfilled'){wxWeeklyRaw=wkR.value;msgs.push('✅ 週預報');}
+  else{console.warn('weekly wx',wkR.reason);}
   setConn(true,'連線完成');
   const ts=new Date().toLocaleTimeString('zh-TW');
-  document.getElementById('updLbl').textContent=msgs.join(' ｜ ')+' ｜ '+ts;
+  const lbl=msgs.join(' ｜ ')+' ｜ '+ts;
+  document.getElementById('updLbl').textContent=lbl;
+  document.getElementById('connStatusLbl').textContent=lbl;
   document.getElementById('footLbl').textContent='中央氣象署 CWA Open Data ｜ 更新：'+ts;
   const delay=parseFloat(document.getElementById('delayPick').value);
   renderWeek(tideEvents,delay,weekOffset);
@@ -378,7 +509,7 @@ async function loadAll(){
 }
 async function apiFetch(url){const r=await fetch(url);if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}
 
-// ── PARSE TIDE ─────────────────────────────────────────────────────────
+// ── PARSE TIDE ────────────────────────────────────────────────────────────
 function parseTideApi(raw){
   try{
     let fc=raw?.records?.TideForecasts||raw?.cwaopendata?.Resources?.Resource?.Data?.TideForecasts;
@@ -393,7 +524,7 @@ function parseTideApi(raw){
   }catch(e){console.error(e);return null;}
 }
 
-// ── PARSE WEATHER ──────────────────────────────────────────────────────
+// ── PARSE WEATHER (3h / current) ─────────────────────────────────────────
 function parseWeather(){
   if(!wxRaw)return null;
   try{
@@ -409,7 +540,6 @@ function parseWeather(){
     function cur(names){
       for(const nm of Array.isArray(names)?names:[names]){
         const ts=em[nm]||[];
-        // try DataTime (hourly) or StartTime/EndTime (range)
         for(const t of ts){
           const dtKey=t.DataTime||t.StartTime;if(!dtKey)continue;
           const s=new Date(dtKey).getTime();
@@ -421,18 +551,94 @@ function parseWeather(){
       return null;
     }
     const wx=cur('Wx'),ws=cur('WS'),wd=cur('WD'),tmp=cur('T'),rh=cur('RH'),pop=cur(['PoP6h','PoP12h']);
-    // Try multiple key names for each value
     const windSpd=parseFloat(ws?.WindSpeed||ws?.windSpeed||ws?.Speed||ws?.SPEED||0);
     const windDir=wd?.WindDirection||wd?.windDirection||wd?.Direction||'--';
     const temp=parseFloat(tmp?.Temperature||tmp?.temperature||tmp?.TEMPERATURE||0)||25;
     const humid=parseFloat(rh?.RelativeHumidity||rh?.relativeHumidity||rh?.Humidity||0)||70;
-    const weather=wx?.Weather||wx?.weather||wx?.WEATHER||'請更新天氣';
+    const weather=wx?.Weather||wx?.weather||wx?.WEATHER||'--';
     const precipitation=parseFloat(pop?.PoP6h||pop?.PoP12h||pop?.ProbabilityOfPrecipitation||0);
     return{weather,windSpd,windDir,temp,rh:humid,pop:precipitation,hasData:!!(ws||tmp)};
   }catch(e){console.error(e);return null;}
 }
 
-// ── TIDE PHASE ENGINE ──────────────────────────────────────────────────
+// ── PARSE WEEKLY WEATHER ──────────────────────────────────────────────────
+function parseWeeklyWeather(){
+  // Try wxWeeklyRaw first, then fall back to wxRaw for weekly extraction
+  const raw=wxWeeklyRaw||wxRaw;
+  if(!raw)return null;
+  try{
+    let loc=null;
+    // F-D0047-091 structure
+    const locs1=raw?.records?.Locations||[];
+    for(const g of locs1){
+      const f=(g.Location||[]).find(l=>l.LocationName==='佳冬鄉');
+      if(f){loc=f;break;}
+    }
+    if(!loc)return null;
+    // Build element map
+    const em={};
+    for(const el of loc.WeatherElement||[]) em[el.ElementName]=el;
+
+    // Get all time entries from MaxT (most reliable for daily keys)
+    const maxTEl=em['最高溫度']||em['MaxT'];
+    if(!maxTEl)return null;
+    const days=[];
+    const times=maxTEl.Time||[];
+    for(let i=0;i<Math.min(times.length,7);i++){
+      const t=times[i];
+      const startDt=new Date(t.StartTime||t.DataTime);
+      const dayStr=fmtDate(startDt);
+      function getVal(names,field){
+        for(const nm of Array.isArray(names)?names:[names]){
+          const el=em[nm];if(!el)continue;
+          const slot=(el.Time||[]).find(x=>{
+            const s=x.StartTime||x.DataTime;
+            return s&&fmtDate(new Date(s))===dayStr;
+          });
+          if(slot){
+            const v=slot.ElementValue?.[0];
+            if(v){
+              if(field&&v[field]!=null)return v[field];
+              const keys=Object.keys(v);
+              return keys.length?v[keys[0]]:null;
+            }
+          }
+        }
+        return null;
+      }
+      const hi=parseFloat(getVal(['最高溫度','MaxT'],'MaxTemperature')||getVal(['最高溫度','MaxT'])||0)||null;
+      const lo=parseFloat(getVal(['最低溫度','MinT'],'MinTemperature')||getVal(['最低溫度','MinT'])||0)||null;
+      const avg=parseFloat(getVal(['平均溫度','T'],'Temperature')||0)||null;
+      const wxDesc=getVal(['天氣現象','Wx'],'Weather')||getVal(['天氣現象','Wx'])||'--';
+      const wxCode=parseInt(getVal(['天氣現象','Wx'],'WeatherCode')||0)||0;
+      const pop=parseFloat(getVal(['12小時降雨機率','PoP12h'],'PoP12h')||getVal(['12小時降雨機率','PoP12h'])||0)||0;
+      const rh=parseFloat(getVal(['平均相對濕度','RH'],'RelativeHumidity')||0)||null;
+      const ws=parseFloat(getVal(['風速','WS'],'WindSpeed')||0)||null;
+      const wd=getVal(['風向','WD'],'WindDirection')||null;
+      const uvi=parseFloat(getVal(['紫外線指數','UVI'],'UVIndex')||0)||null;
+      const desc=getVal(['天氣預報綜合描述','WeatherDescription'])||null;
+      days.push({dayStr,startDt,hi,lo,avg,wxDesc,wxCode,pop,rh,ws,wd,uvi,desc});
+    }
+    return days.length?days:null;
+  }catch(e){console.error('weekly wx parse',e);return null;}
+}
+
+function wxIcon(code,desc){
+  const d=(desc||'').toLowerCase();
+  if(d.includes('雷'))return '⛈️';
+  if(d.includes('大雨')||d.includes('豪雨'))return '🌧️';
+  if(d.includes('雨'))return '🌦️';
+  if(d.includes('多雲'))return '⛅';
+  if(d.includes('陰'))return '☁️';
+  if(d.includes('晴'))return '☀️';
+  if(code>=1&&code<=3)return '☀️';
+  if(code>=4&&code<=7)return '⛅';
+  if(code>=8&&code<=16)return '🌦️';
+  if(code>=17&&code<=22)return '🌧️';
+  return '🌤️';
+}
+
+// ── TIDE PHASE ENGINE ─────────────────────────────────────────────────────
 function getTidePhaseAt(events,delayHr,refTime){
   if(!events||!events.length)return null;
   const poolNow=new Date(refTime.getTime()-delayHr*3600000);
@@ -448,7 +654,7 @@ function getTidePhaseAt(events,delayHr,refTime){
 }
 function bf(ms){if(ms<0.3)return 0;if(ms<1.6)return 1;if(ms<3.4)return 2;if(ms<5.5)return 3;if(ms<8.0)return 4;if(ms<10.8)return 5;if(ms<13.9)return 6;return 7;}
 
-// ── 7-DAY SCORE（每 30 分鐘採樣，回傳最佳窗口）─────────────────────────
+// ── 7-DAY SCORE ───────────────────────────────────────────────────────────
 function calcDayScore(dayStr,events,delay){
   const base=new Date(dayStr+'T00:00:00+08:00');
   let best=25,bestHr=9,bestPhase='flowing';
@@ -462,46 +668,67 @@ function calcDayScore(dayStr,events,delay){
     s=Math.max(0,Math.min(100,Math.round(s)));
     if(s>best){best=s;bestHr=h;bestPhase=pk;}
   }
-  // Build time range ±1 hour
   const rS=Math.max(0,bestHr-1),rE=Math.min(23.5,bestHr+1);
   const fmt=h=>{const hh=Math.floor(h),mm=Math.round((h%1)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');};
   const topFish=(FISH_MAP[bestPhase]||FISH_MAP.default).slice(0,3);
   return{score:best,bestHr,rangeStr:fmt(rS)+'~'+fmt(rE),topFish};
 }
 
-// ── RULE ENGINE ────────────────────────────────────────────────────────
+// ── RULE ENGINE ───────────────────────────────────────────────────────────
 function runEngine(events,wx,delay){
   const now=new Date(),hr=now.getHours()+now.getMinutes()/60;
-  let score=50,tags=[],depth='釣中水（半水）',depDesc='水流穩定，魚群分布均勻',fish=[],gear={},baits=[];
+  let score=50,tags=[],fish=[],windNote='';
   const ph=getTidePhaseAt(events,delay,now),pkey=ph?.phase||'unknown';
 
-  if(pkey==='sanfen'){score+=25;tags.push({t:'【三分水 · 水流激增：掠食性魚類活性極高！】',c:'ok'});fish=FISH_MAP.sanfen;depth='釣全水層（追魚群）';depDesc='三分水帶動浮游生物，掠食魚橫跨全水層主動出擊';}
-  else if(pkey==='qifen'){score+=30;tags.push({t:'【七分水 · 頂流時刻：大物出沒！】',c:'ok'});fish=FISH_MAP.qifen;depth='釣底層（貼底跟流）';depDesc='七分水流速最強，大型魚貼底高速追餌，咬勁猛烈';}
-  else if(pkey==='slack'){score-=20;tags.push({t:'【停潮死水：底層缺氧，活性低迷】',c:'bad'});fish=FISH_MAP.slack;depth='釣淺水或水面';depDesc='停潮期底層缺氧，轉主攻淺水表層與溫和魚種';}
-  else if(pkey==='flowing'){score+=8;tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});fish=FISH_MAP.flowing;depth='釣中下層';depDesc='水流穩定，魚群主要分布於中下水層';}
+  if(pkey==='sanfen'){score+=25;tags.push({t:'【三分水 · 水流激增：掠食性魚類活性極高！】',c:'ok'});fish=FISH_MAP.sanfen;}
+  else if(pkey==='qifen'){score+=30;tags.push({t:'【七分水 · 頂流時刻：大物出沒！】',c:'ok'});fish=FISH_MAP.qifen;}
+  else if(pkey==='slack'){score-=20;tags.push({t:'【停潮死水：底層缺氧，活性低迷】',c:'bad'});fish=FISH_MAP.slack;}
+  else if(pkey==='flowing'){score+=8;tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});fish=FISH_MAP.flowing;}
   else{fish=FISH_MAP.default;tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});}
 
   if(hr>=15&&hr<18){score+=15;tags.push({t:'【黃昏溶氧顛峰：黃金咬擊期 15:00–18:00 🌅】',c:'gold'});}
-  if(hr>=4&&hr<7){score+=5;tags.push({t:'【清晨缺氧期：建議釣淺水或水面 🌄】',c:'warn'});if(!depth.includes('淺')){depth='釣淺水或水面（清晨）';depDesc='清晨底層溶氧偏低，魚群趨向水面覓食';}}
+  if(hr>=4&&hr<7){score+=5;tags.push({t:'【清晨缺氧期：建議釣淺水或水面 🌄】',c:'warn'});}
 
-  let windNote='';
   if(wx){
     const bft=bf(wx.windSpd);
     if(bft>=4){score-=10;windNote='加重咬鉛防風阻';tags.push({t:`【風力 ${bft} 級：加重咬鉛，降低水面風阻干擾】`,c:'warn'});}
-    if(wx.temp>32){score-=5;tags.push({t:`【高溫 ${wx.temp}°C：避暑模式 → 底層陰影或深水區】`,c:'warn'});if(!depth.includes('底')&&!depth.includes('深')){depth='釣底層陰影或深水區';depDesc='避暑模式：魚類下潛至底層低溫區';}}
+    if(wx.temp>32){score-=5;tags.push({t:`【高溫 ${wx.temp}°C：避暑模式 → 底層陰影或深水區】`,c:'warn'});}
     if(wx.temp<18){score-=8;tags.push({t:`【低溫 ${wx.temp}°C：魚類代謝下降，咬況遲緩】`,c:'bad'});}
     if(wx.temp>=20&&wx.temp<=28)score+=8;
   }
   score=Math.max(0,Math.min(100,Math.round(score)));
-  return{score,tags,depth,depDesc,fish,gear:buildGear(pkey,wx,windNote),baits:buildBaits(pkey,wx),ph};
+  return{score,tags,fish,gear:buildGear(pkey,wx,windNote),baits:buildBaits(pkey,wx),ph,pkey};
 }
+
+// ── GEAR (with reasons) ───────────────────────────────────────────────────
 function buildGear(phase,wx,wn){
-  let rod='磯釣竿 3-4 號 / MH 級路亞竿',pe='PE 1.5-2 號',leader='碳纖子線（FC）2.5-3 號',lead='輕咬鉛 0.5-1 錢';
-  if(phase==='sanfen'||phase==='qifen'){rod='磯釣竿 4-5 號 / H 級路亞竿';pe='PE 2-3 號';leader='碳纖子線 3-4 號（耐磨）';lead='中型咬鉛 1-1.5 錢';}
-  else if(phase==='slack'){pe='PE 1-1.5 號';leader='尼龍子線 2-2.5 號（軟調）';lead='超輕咬鉛 0.2-0.3 錢';}
-  if(wn)lead+=' ★ '+wn;
-  return{'竿':rod,'主線':pe,'子線':leader,'咬鉛':lead};
+  let rod,pe,leader,lead,hook;
+  if(phase==='sanfen'||phase==='qifen'){
+    rod  ={val:'磯釣竿 4–5 號 / H 級路亞竿',why:'大型掠食魚衝勁猛，需中強硬調竿吸收衝擊，路亞竿可遠投追魚群'};
+    pe   ={val:'PE 2–3 號',why:'強流期需抗拉力，粗主線防止掠食魚斷線奪走釣組'};
+    leader={val:'碳纖子線（FC）3–4 號（耐磨）',why:'FC 線折射率接近水，掠食魚不易察覺，且耐礁石磨損'};
+    lead ={val:'中型咬鉛 1–1.5 錢'+(wn?' ★ '+wn:''),why:'重鉛壓制強流，確保釣餌維持在目標水層不被沖走'};
+    hook ={val:'磯釣鉤 10–12 號',why:'大鉤配合大型餌（活蝦/整條小魚），強鉤條應付掠食魚猛烈咬勁'};
+  }else if(phase==='slack'){
+    rod  ={val:'軟調磯釣竿 2–3 號',why:'停潮期魚口輕微，軟調竿可感知細微咬訊，避免驚魚'};
+    pe   ={val:'PE 1–1.5 號',why:'細線降低水阻，停潮靜水中輕咬鉛才能自然沉底'};
+    leader={val:'尼龍子線 2–2.5 號（軟調）',why:'尼龍線比FC軟，漂流效果佳，停潮期增加餌的自然呈現'};
+    lead ={val:'超輕咬鉛 0.2–0.3 錢'+(wn?' ★ '+wn:''),why:'極輕鉛讓餌料緩慢自然沉底，模擬弱水流中的真實行為'};
+    hook ={val:'細條小鉤 7–8 號',why:'小鉤搭配停潮期細小餌料，減少魚的警戒心'};
+  }else{
+    rod  ={val:'磯釣竿 3–4 號 / MH 路亞竿',why:'流水通用型，兼顧遠投與對魚感知，適合各種水深'};
+    pe   ={val:'PE 1.5–2 號',why:'中等主線強度平衡垂釣舒適度與應付意外大魚的需求'};
+    leader={val:'碳纖子線（FC）2.5–3 號',why:'全天候耐用，FC線在清水中隱形效果佳，適合流水期'};
+    lead ={val:'輕咬鉛 0.5–1 錢'+(wn?' ★ '+wn:''),why:'中等鉛重隨流漂動，確保餌到位又不過重影響漂流自然感'};
+    hook ={val:'磯釣鉤 8–10 號',why:'通用尺寸適合活蝦或蝦肉丁，咬口感靈敏'};
+  }
+  return[
+    {key:'竿',...rod},{key:'主線',...pe},{key:'子線',...leader},
+    {key:'咬鉛',...lead},{key:'鉤號',...hook}
+  ];
 }
+
+// ── BAITS (with top list) ──────────────────────────────────────────────────
 function buildBaits(phase,wx){
   let list=[];
   if(phase==='sanfen'||phase==='qifen')list=['🦐 活蝦（首選）—— 掠食魚無法抗拒','🐟 活小魚（丁香/吻仔魚）—— 水流期鮮活誘食','🎣 金屬鐵板假餌 —— 觸發追咬本能','🦑 泥鰍形軟蟲 —— 貼底誘釣大魚'];
@@ -511,7 +738,36 @@ function buildBaits(phase,wx){
   return list;
 }
 
-// ── SCORE RING ─────────────────────────────────────────────────────────
+// ── DEPTH SCHEDULE (1-hour intervals) ────────────────────────────────────
+function renderDepthSchedule(events,delay,pkey){
+  const now=new Date();
+  const nowHr=now.getHours();
+  const todayStr=fmtDate(now);
+  let rows='';
+  for(let h=4;h<=22;h++){
+    const t=new Date(todayStr+'T'+String(h).padStart(2,'0')+':00:00+08:00');
+    const ph=getTidePhaseAt(events,delay,t);
+    const pk=ph?.phase||'flowing';
+    let depth,col,icon;
+    if(pk==='sanfen'){depth='全水層追魚';col='#00ff88';icon='🌊';}
+    else if(pk==='qifen'){depth='底層貼底';col='#00d4ff';icon='🎣';}
+    else if(pk==='slack'){depth='淺水/水面';col='#ff3c3c';icon='⚓';}
+    else{depth='中下層';col='#ffd700';icon='➡️';}
+    // Dawn override
+    if(h>=4&&h<7&&pk!=='sanfen'&&pk!=='qifen'){depth='淺水（清晨缺氧）';col='#a78bfa';icon='🌄';}
+    // Golden hour
+    const golden=(h>=15&&h<18)?'<span style="font-size:9px;color:#ffd700;margin-left:4px">⭐黃金</span>':'';
+    const isNow=h===nowHr&&fmtDate(t)===fmtDate(now);
+    rows+=`<tr class="${isNow?'now-hr':''}">
+      <td style="color:var(--t2);white-space:nowrap">${icon} ${String(h).padStart(2,'0')}:00–${String(h+1).padStart(2,'0')}:00</td>
+      <td style="color:${col};font-weight:${isNow?'800':'500'}">${depth}${golden}</td>
+    </tr>`;
+  }
+  document.getElementById('depthSchedule').innerHTML=
+    `<table class="depth-table"><thead><tr><th>時段</th><th>建議釣棚</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── SCORE RING ─────────────────────────────────────────────────────────────
 function setScore(s){
   const circ=326.7,offset=circ*(1-s/100);
   const fg=document.getElementById('ringFg');fg.style.strokeDashoffset=offset;
@@ -519,11 +775,9 @@ function setScore(s){
   fg.style.stroke=col;
   const num=document.getElementById('scoreNum');num.textContent=s;num.style.color=col;
 }
-
-// ── SCORE COLOR ─────────────────────────────────────────────────────────
 function scCol(s){return s>=75?'#00ff88':s>=60?'#7fff44':s>=45?'#ffd700':s>=30?'#ff8c00':'#ff3c3c';}
 
-// ── RENDER WEEK ────────────────────────────────────────────────────────
+// ── RENDER WEEK STRIP ─────────────────────────────────────────────────────
 function renderWeek(events,delay,offset){
   if(!events||!events.length)return;
   const strip=document.getElementById('weekStrip');
@@ -558,7 +812,7 @@ function renderWeek(events,delay,offset){
   initTanks();
 }
 
-// ── FISH TANK ANIMATION ────────────────────────────────────────────────
+// ── FISH TANK ANIMATION ───────────────────────────────────────────────────
 const FC=['#00d4ff','#00ff88','#ffd700','#ff8c00','#a78bfa','#ff88cc'];
 function initTanks(){
   tanks.length=0;
@@ -596,7 +850,7 @@ function animFrame(ts){
 }
 function startAnim(){if(rafId)cancelAnimationFrame(rafId);lastT=performance.now();rafId=requestAnimationFrame(animFrame);}
 
-// ── RECALC (main) ──────────────────────────────────────────────────────
+// ── RECALC (main) ─────────────────────────────────────────────────────────
 function recalc(){
   const delay=parseFloat(document.getElementById('delayPick').value);
   const wx=parseWeather();
@@ -605,14 +859,51 @@ function recalc(){
   document.getElementById('tagsEl').innerHTML=r.tags.map(t=>`<div class="tag ${t.c}">${t.t}</div>`).join('')||'<div class="tag info">分析完成</div>';
   renderTide(tideEvents,r.ph,delay);
   renderWx(wx);
-  document.getElementById('depthVal').textContent=r.depth;
-  document.getElementById('depthDesc').textContent=r.depDesc;
-  document.getElementById('fishChips').innerHTML=r.fish.map((f,i)=>`<span class="fc ${i===0?'star':''}">${i===0?'⭐ ':''}${f}</span>`).join('');
-  document.getElementById('gearRows').innerHTML=Object.entries(r.gear).map(([k,v])=>`<div class="gr2"><span class="gk">${k}</span><span class="gv">${v}</span></div>`).join('');
-  document.getElementById('baitRows').innerHTML=r.baits.map(b=>`<li class="bi">${b}</li>`).join('');
+  renderDepthSchedule(tideEvents,delay,r.pkey);
+  renderFish(r.fish,r.pkey);
+  renderGear(r.gear);
+  renderBait(r.baits);
 }
 
-// ── RENDER TIDE ────────────────────────────────────────────────────────
+// ── RENDER FISH (with reasons) ────────────────────────────────────────────
+function renderFish(fishList,pkey){
+  const el=document.getElementById('fishDetail');
+  const phaseLabel={sanfen:'三分水活水激增',qifen:'七分水頂流',slack:'停潮緩流',flowing:'流水期',unknown:'流水期'};
+  const subtitle=phaseLabel[pkey]||'流水期';
+  let html=`<div style="font-size:10px;color:var(--t2);margin-bottom:8px">目前潮相：<span style="color:var(--c)">${subtitle}</span>，推薦魚種如下</div>`;
+  fishList.slice(0,4).forEach((name,i)=>{
+    const d=FISH_DETAIL[name]||{en:'',icon:'🐟',reason:'根據潮汐相位推薦，活性較高的本地魚種。'};
+    html+=`<div class="fish-item${i===0?' star':''}">
+      <div class="fish-name">${d.icon} ${name}<span style="font-size:9px;color:var(--t2);font-weight:400">${d.en}</span>${i===0?'<span style="font-size:9px;background:var(--g);color:#000;padding:1px 5px;border-radius:3px;font-weight:900;margin-left:4px">首選</span>':''}</div>
+      <div class="fish-reason">${d.reason}</div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ── RENDER GEAR (with reasons) ────────────────────────────────────────────
+function renderGear(gearList){
+  const el=document.getElementById('gearDetail');
+  el.innerHTML=gearList.map(g=>`
+    <div class="gear-item">
+      <div class="gear-kv"><span class="gear-k">${g.key}</span><span class="gear-v">${g.val}</span></div>
+      <div class="gear-why">↳ ${g.why}</div>
+    </div>`).join('');
+}
+
+// ── RENDER BAIT (top + encyclopedia) ─────────────────────────────────────
+function renderBait(todayBaits){
+  const el=document.getElementById('baitDetail');
+  const topHtml=todayBaits.map((b,i)=>`<li class="bi${i===0?' top1':''}">${i===0?'★ ':''  }${b}</li>`).join('');
+  const encHtml=BAIT_ENC.map(b=>`<div class="be"><div class="be-name">${b.name}</div><div class="be-desc">${b.desc}</div></div>`).join('');
+  el.innerHTML=`
+    <ul class="bait-top">${topHtml}</ul>
+    <div class="bait-sep"></div>
+    <div class="bait-enc-title">📚 完整餌料百科</div>
+    <div class="bait-enc">${encHtml}</div>`;
+}
+
+// ── RENDER TIDE ───────────────────────────────────────────────────────────
 function renderTide(events,ph,delay){
   const now=new Date();
   let txt='',col='var(--t2)';
@@ -624,32 +915,25 @@ function renderTide(events,ph,delay){
       flowing:['➡️ 流水中','#5a6e99']
     };
     [txt,col]=m[ph.phase]||['➡️ 流水中','#5a6e99'];
-    if(ph.minSince!=null) txt+=`（${ph.prev.type}後 ${Math.round(ph.minSince)} 分）`;
+    if(ph.minSince!=null)txt+=`（${ph.prev.type}後 ${Math.round(ph.minSince)} 分）`;
     if(ph.next&&ph.minTo!=null){
       const nt=new Date(ph.next.dt.getTime()+delay*3600000);
       const timeStr=nt.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:true});
       txt+=`　→　下次${ph.next.type} ${timeStr}（${Math.round(ph.minTo)}分後）`;
     }
   }else if(events&&events.length){
-    // Unknown phase but we have data - find next event
     const next=(events||[]).find(e=>new Date(e.dt.getTime()+delay*3600000)>now);
     if(next){
       const nt=new Date(next.dt.getTime()+delay*3600000);
       const timeStr=nt.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:true});
       const minTo=(nt-now)/60000;
-      txt=`下次${next.type} ${timeStr}（${Math.round(minTo)}分後）`;
-      col='var(--t)';
+      txt=`下次${next.type} ${timeStr}（${Math.round(minTo)}分後）`;col='var(--t)';
     }else{txt='流水中';col='#5a6e99';}
   }else{txt='潮汐資料就緒';col='var(--t2)';}
-
   const el=document.getElementById('tidePhase');el.textContent=txt;el.style.color=col;
   drawMainTide(events,delay);
-
-  // Today label
   document.getElementById('todayDateLbl').textContent=
     now.toLocaleDateString('zh-TW',{month:'long',day:'numeric',weekday:'long'})+' 潮汐';
-
-  // Today chips
   const ts=fmtDate(now);
   const chips=(events||[]).filter(e=>fmtDate(e.dt)===ts).map(e=>{
     const adj=new Date(e.dt.getTime()+delay*3600000);
@@ -659,7 +943,7 @@ function renderTide(events,ph,delay){
   document.getElementById('tideChips').innerHTML=chips||'<span style="color:var(--t2);font-size:11px;">今日無資料</span>';
 }
 
-// ── DRAW TIDE CANVAS ───────────────────────────────────────────────────
+// ── DRAW TIDE CANVAS ──────────────────────────────────────────────────────
 function drawMainTide(events,delay){
   const canvas=document.getElementById('tideCanvas');
   const W=canvas.offsetWidth||500,H=64;canvas.width=W;canvas.height=H;
@@ -696,30 +980,33 @@ function drawMainTide(events,delay){
   for(let dh=-4;dh<=8;dh+=2){const t=new Date(now.getTime()+dh*3600000),x=((t-winS)/(winE-winS))*W;if(x>=0&&x<=W)ctx.fillText(t.getHours()+':00',x-8,H-1);}
 }
 
-// ── RENDER WEATHER ─────────────────────────────────────────────────────
+// ── RENDER WEATHER (current + weekly) ────────────────────────────────────
 function renderWx(wx){
   const el=document.getElementById('wxPanel');
+  const weeklyDays=parseWeeklyWeather();
+
+  // Current conditions block
+  let curHtml='';
   if(!wx){
-    el.innerHTML=`
+    curHtml=`
     <div class="wx-grid">
       <div class="wx-cell"><div class="wx-lbl">溫度</div><div class="wx-val" style="color:var(--t2)">--<span class="wx-unit">°C</span></div></div>
       <div class="wx-cell"><div class="wx-lbl">風速</div><div class="wx-val" style="color:var(--t2)">--<span class="wx-unit"> 級</span></div></div>
       <div class="wx-cell"><div class="wx-lbl">相對濕度</div><div class="wx-val" style="color:var(--t2)">--<span class="wx-unit">%</span></div></div>
     </div>
     <div class="wx-bot">
-      <div class="wx-bot-cell"><div class="wx-bot-lbl">天氣</div><div class="wx-bot-val" style="color:var(--t2)">API 未連線</div></div>
+      <div class="wx-bot-cell"><div class="wx-bot-lbl">天氣</div><div class="wx-bot-val" style="color:var(--t2)">按 ⚙️ 輸入 API Key</div></div>
       <div class="wx-bot-cell"><div class="wx-bot-lbl">風向</div><div class="wx-bot-val" style="color:var(--t2)">--</div></div>
     </div>`;
-    return;
-  }
-  const bft=bf(wx.windSpd);
-  const wc=bft>=5?'#ff3c3c':bft>=4?'#ffd700':bft>=3?'#00d4ff':'#7a99bb';
-  const tc=wx.temp>32?'#ff3c3c':wx.temp>28?'#ff8c00':wx.temp>=20?'#00ff88':'#00d4ff';
-  const hc=wx.rh>85?'#ff8c00':wx.rh>=60?'#00ff88':'#00d4ff';
-  el.innerHTML=`
+  }else{
+    const bft=bf(wx.windSpd);
+    const wc=bft>=5?'#ff3c3c':bft>=4?'#ffd700':bft>=3?'#00d4ff':'#7a99bb';
+    const tc=wx.temp>32?'#ff3c3c':wx.temp>28?'#ff8c00':wx.temp>=20?'#00ff88':'#00d4ff';
+    const hc=wx.rh>85?'#ff8c00':wx.rh>=60?'#00ff88':'#00d4ff';
+    curHtml=`
     <div class="wx-grid">
       <div class="wx-cell"><div class="wx-lbl">溫度</div><div class="wx-val" style="color:${tc}">${wx.temp}<span class="wx-unit">°C</span></div></div>
-      <div class="wx-cell"><div class="wx-lbl">風速</div><div class="wx-val" style="color:${wc}">${bft}<span class="wx-unit"> 級 ${bft>0?'('+wx.windSpd.toFixed(1)+'m/s)':''}</span></div></div>
+      <div class="wx-cell"><div class="wx-lbl">風速</div><div class="wx-val" style="color:${wc}">${bft}<span class="wx-unit"> 級${bft>0?' ('+wx.windSpd.toFixed(1)+'m/s)':''}</span></div></div>
       <div class="wx-cell"><div class="wx-lbl">相對濕度</div><div class="wx-val" style="color:${hc}">${wx.rh}<span class="wx-unit">%</span></div></div>
     </div>
     <div class="wx-bot">
@@ -730,9 +1017,37 @@ function renderWx(wx){
         <div class="wx-bot-val">${wx.windDir==='--'?'<span style="color:var(--t2)">微風無明顯風向</span>':wx.windDir}</div>
       </div>
     </div>`;
+  }
+
+  // Weekly forecast block
+  let weekHtml='';
+  if(weeklyDays&&weeklyDays.length){
+    const dayNames=['日','一','二','三','四','五','六'];
+    const todayStr=fmtDate(new Date());
+    const cells=weeklyDays.map(d=>{
+      const isToday=d.dayStr===todayStr;
+      const icon=wxIcon(d.wxCode,d.wxDesc);
+      const dt=new Date(d.dayStr+'T12:00:00+08:00');
+      const dn=dayNames[dt.getDay()];
+      const mm=(dt.getMonth()+1).toString().padStart(2,'0'),dd=dt.getDate().toString().padStart(2,'0');
+      return `<div class="wx-day${isToday?' wx-today':''}">
+        <div class="wx-day-name">週${dn}<br><span style="font-size:8px">${mm}/${dd}</span></div>
+        <div class="wx-day-icon">${icon}</div>
+        <div class="wx-day-hi">${d.hi!=null?d.hi+'°':'--'}</div>
+        <div class="wx-day-lo">${d.lo!=null?d.lo+'°':'--'}</div>
+        ${d.pop?`<div class="wx-day-pop">☔${d.pop}%</div>`:''}
+        ${d.uvi!=null?`<div class="wx-day-uv">UV${d.uvi}</div>`:''}
+      </div>`;
+    }).join('');
+    weekHtml=`<div class="wx-sep"></div>
+      <div style="font-size:9px;color:var(--t2);letter-spacing:1px;margin-bottom:5px">📅 佳冬鄉一週預報</div>
+      <div class="wx-week">${cells}</div>`;
+  }
+
+  el.innerHTML=curHtml+weekHtml;
 }
 
-// ── UTILS ─────────────────────────────────────────────────────────────
+// ── UTILS ─────────────────────────────────────────────────────────────────
 function setConn(ok,txt){document.getElementById('dotEl').className='dot '+(ok===true?'on':'off');document.getElementById('connTxt').textContent=txt;}
 function fmtDate(d){return d.toISOString().slice(0,10);}
 
