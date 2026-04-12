@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎣 佳冬野生池 · 實戰釣魚儀表板</title>
+  <style>
+    :root {
+      --bg: #070c18;
+      --bg-card: #0c1225;
+      --cyan: #00d4ff;
+      --green: #00ff88;
+      --orange: #ff8c00;
+      --red: #ff3c3c;
+      --yellow: #ffd700;
+      --txt: #d6e4ff;
+      --txt2: #8aa0c4;
+      --border: #182442;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--txt);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,80,180,0.15) 0%, transparent 60%);
+    }
+
+    /* ── HEADER ── */
+    .hdr {
+      padding: 16px 24px;
+      background: #050a14;
+      border-bottom: 1px solid rgba(0,212,255,0.3);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+    }
+    .hdr-title { font-size: 20px; font-weight: 800; color: var(--cyan); letter-spacing: 1px; }
+    .clock { font-size: 24px; font-weight: 700; color: var(--txt); text-align: right; }
+    .date-lbl { font-size: 12px; color: var(--txt2); }
+
+    /* ── CONFIG BAR ── */
+    .cfg {
+      padding: 12px 24px;
+      background: rgba(12, 18, 37, 0.8);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .cfg label { font-size: 13px; color: var(--txt2); font-weight: 600; }
+    .cfg input[type=text] {
+      flex: 1; min-width: 250px; max-width: 350px;
+      background: #000; border: 1px solid var(--border);
+      border-radius: 6px; padding: 8px 12px;
+      color: var(--cyan); font-family: monospace;
+    }
+    .cfg select {
+      background: #000; border: 1px solid var(--border);
+      color: var(--cyan); padding: 8px 12px; border-radius: 6px;
+    }
+    .btn {
+      padding: 8px 16px; border-radius: 6px; border: 1px solid;
+      cursor: pointer; font-size: 13px; font-weight: bold; transition: 0.2s;
+    }
+    .btn-save { border-color: var(--cyan); background: rgba(0,212,255,.1); color: var(--cyan); }
+    .btn-save:hover { background: rgba(0,212,255,.2); }
+    .btn-reload { border-color: var(--green); background: rgba(0,255,136,.1); color: var(--green); }
+    .btn-reload:hover { background: rgba(0,255,136,.2); }
+    #saveMsg { font-size: 12px; color: var(--green); display: none; }
+
+    /* ── MAIN GRID ── */
+    .main { padding: 24px; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+    .row { display: grid; gap: 20px; }
+    .row-top { grid-template-columns: 1fr 1.5fr 1fr; }
+    .row-bot { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px; padding: 18px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .c-title { font-size: 13px; color: var(--txt2); font-weight: bold; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    /* ── SCORE & FISH VISUAL ── */
+    .score-wrap { text-align: center; padding: 10px 0; }
+    .score-num { font-size: 72px; font-weight: 900; line-height: 1; margin-bottom: 5px; }
+    .fish-visual { font-size: 20px; font-weight: bold; margin: 10px 0; padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.3); }
+
+    /* ── TAGS ── */
+    .tags { display: flex; flex-direction: column; gap: 6px; }
+    .tag { padding: 6px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .tag.ok { background: rgba(0,255,136,.15); color: var(--green); border: 1px solid rgba(0,255,136,.3); }
+    .tag.warn { background: rgba(255,140,0,.15); color: var(--orange); border: 1px solid rgba(255,140,0,.3); }
+    .tag.bad { background: rgba(255,60,60,.15); color: var(--red); border: 1px solid rgba(255,60,60,.3); }
+
+    /* ── WEATHER GRID ── */
+    .w-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .w-cell { background: rgba(0,0,0,0.4); padding: 12px; border-radius: 8px; border: 1px solid #1a2639; }
+    .w-lbl { font-size: 12px; color: var(--txt2); margin-bottom: 4px; }
+    .w-val { font-size: 22px; font-weight: bold; color: var(--cyan); }
+    .w-unit { font-size: 12px; color: var(--txt2); }
+    
+    /* ── LISTS ── */
+    .item-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .item-list li { background: rgba(255,255,255,0.03); padding: 10px; border-left: 3px solid var(--cyan); border-radius: 0 4px 4px 0; font-size: 13px; line-height: 1.5; }
+    .target-val { font-size: 18px; font-weight: bold; color: var(--green); margin-bottom: 8px; }
+
+    @media (max-width: 900px) { .row-top { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-title">🎣 佳冬野生池 · 實戰釣魚儀表板</div>
+  <div>
+    <div class="clock" id="clockEl">--:--:--</div>
+    <div class="date-lbl" id="dateEl">載入中...</div>
+  </div>
+</header>
+
+<div class="cfg">
+  <label>🔑 API Key</label>
+  <input type="text" id="apiKeyIn" placeholder="CWA-XXXXX...">
+  <button class="btn btn-save" onclick="saveKey()">儲存金鑰</button>
+  <span id="saveMsg">✅ 已儲存在瀏覽器</span>
+
+  <label style="margin-left:12px;">🕐 池塘延遲校正</label>
+  <select id="delayPick" onchange="loadAll()">
+    <option value="0">0 小時</option>
+    <option value="1">1 小時</option>
+    <option value="1.5" selected>1.5 小時 (預設)</option>
+    <option value="2">2 小時</option>
+  </select>
+  <button class="btn btn-reload" onclick="loadAll()">🔄 更新資料</button>
+</div>
+
+<main class="main">
+  <div class="row row-top">
+    <div class="card">
+      <div class="c-title">⚡ 作釣推薦指數與分析</div>
+      <div class="score-wrap">
+        <div class="score-num" id="scoreNum">--</div>
+        <div class="fish-visual" id="fishVisual">等待資料匯入...</div>
+      </div>
+      <div class="tags" id="statusTags"></div>
+    </div>
+
+    <div class="card">
+      <div class="c-title">🌊 潮汐推算狀態 (已校正延遲)</div>
+      <div class="target-val" id="tidePhase">資料讀取中...</div>
+      <div style="font-size: 13px; color: var(--txt2); margin-bottom: 12px;" id="tideDesc"></div>
+      <ul class="item-list" id="tideEvents"></ul>
+    </div>
+
+    <div class="card">
+      <div class="c-title">☁️ 即時天氣｜佳冬鄉</div>
+      <div id="wxPanel">資料讀取中...</div>
+    </div>
+  </div>
+
+  <div class="row row-bot">
+    <div class="card">
+      <div class="c-title">📏 推薦釣棚與目標</div>
+      <div class="target-val" id="depthVal">--</div>
+      <div style="font-size: 13px; color: var(--txt2); margin-bottom: 12px;" id="depthDesc">--</div>
+      <div class="c-title" style="margin-top:16px; border:none; padding:0;">🎯 目標魚種</div>
+      <div style="font-size: 14px; font-weight: bold; color: var(--yellow);" id="fishVal">--</div>
+    </div>
+
+    <div class="card">
+      <div class="c-title">⚙️ 武器配置 (竿/線/鉛)</div>
+      <ul class="item-list" id="gearList"></ul>
+    </div>
+
+    <div class="card">
+      <div class="c-title">🦐 餌料策略</div>
+      <ul class="item-list" id="baitList"></ul>
+    </div>
+  </div>
+</main>
+
+<script>
+let tideRaw = null;
+let wxRaw = null;
+
+// 時鐘功能
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('clockEl').textContent = d.toLocaleTimeString('zh-TW', {hour12: false});
+  document.getElementById('dateEl').textContent = d.toLocaleDateString('zh-TW', {year:'numeric', month:'long', day:'numeric'});
+}, 1000);
+
+// 初始化
+window.onload = () => {
+  const k = localStorage.getItem('cwa_key');
+  if (k) document.getElementById('apiKeyIn').value = k;
+  if (k) loadAll();
+};
+
+function saveKey() {
+  const k = document.getElementById('apiKeyIn').value.trim();
+  if (k) {
+    localStorage.setItem('cwa_key', k);
+    const msg = document.getElementById('saveMsg');
+    msg.style.display = 'inline';
+    setTimeout(() => msg.style.display = 'none', 3000);
+    loadAll();
+  } else {
+    alert('請輸入金鑰');
+  }
+}
+
+async function loadAll() {
+  const key = localStorage.getItem('cwa_key');
+  if (!key) {
+    document.getElementById('statusTags').innerHTML = '<div class="tag bad">請先輸入並儲存 API Key</div>';
+    return;
+  }
+  
+  try {
+    const [tRes, wRes] = await Promise.all([
+      fetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-A0021-001?Authorization=${key}&LocationName=屏東縣佳冬鄉`),
+      fetch(`https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-D0047-035?Authorization=${key}&LocationName=佳冬鄉`)
+    ]);
+    
+    tideRaw = await tRes.json();
+    wxRaw = await wRes.json();
+    runLogic();
+  } catch (e) {
+    document.getElementById('statusTags').innerHTML = `<div class="tag bad">連線失敗: ${e.message}</div>`;
+  }
+}
+
+// 解析天氣 (修正大小寫問題)
+function parseWeather() {
+  try {
+    const locs = wxRaw.records.locations[0].location || wxRaw.records.Locations[0].Location;
+    const found = locs.find(l => l.locationName === '佳冬鄉' || l.LocationName === '佳冬鄉');
+    const elements = found.weatherElement || found.WeatherElement;
+    
+    const elMap = {};
+    elements.forEach(el => {
+      const name = el.elementName || el.ElementName;
+      elMap[name] = el.time || el.Time;
+    });
+
+    const now = Date.now();
+    function cur(name) {
+      const times = elMap[name];
+      for (const t of times) {
+        const s = new Date(t.startTime || t.dataTime || t.StartTime || t.DataTime).getTime();
+        const e = t.endTime || t.EndTime ? new Date(t.endTime || t.EndTime).getTime() : s + 10800000;
+        if (now >= s && now <= e) {
+          const valObj = t.elementValue || t.ElementValue;
+          return valObj[0].value || valObj[0];
+        }
+      }
+      return null;
+    }
+
+    return {
+      wx: cur('Wx') || '未知',
+      temp: parseFloat(cur('T') || 0),
+      rh: parseFloat(cur('RH') || 0),
+      ws: parseFloat(cur('WS') || 0),
+      wd: cur('WD') || '--'
+    };
+  } catch (e) { console.log(e); return null; }
+}
+
+// 解析潮汐
+function parseTides() {
+  try {
+    const forecasts = tideRaw.records.TideForecasts || tideRaw.cwaopendata.Resources.Resource.Data.TideForecasts;
+    const daily = forecasts[0].Location.TimePeriods.Daily;
+    const today = new Date().toISOString().slice(0, 10);
+    
+    let events = [];
+    daily.forEach(d => {
+      if (d.Date === today) {
+        d.Time.forEach(t => {
+          events.push({
+            dt: new Date(t.DateTime),
+            type: t.Tide,
+            height: t.TideHeights.AboveLocalMSL || t.TideHeights.AboveChartDatum
+          });
+        });
+      }
+    });
+    return events.sort((a,b) => a.dt - b.dt);
+  } catch (e) { return null; }
+}
+
+function runLogic() {
+  const wx = parseWeather();
+  const tide = parseTides();
+  const delayHr = parseFloat(document.getElementById('delayPick').value);
+  
+  let score = 50;
+  let tags = [];
+  let depth = '釣中水 (半水)';
+  let target = '海鰱 / 瓜仔魚 / 吳郭魚';
+  
+  // 天氣渲染
+  if (wx) {
+    let bft = 0;
+    if(wx.ws < 0.3) bft=0; else if(wx.ws < 1.6) bft=1; else if(wx.ws < 3.4) bft=2; else if(wx.ws < 5.5) bft=3; else if(wx.ws < 8.0) bft=4; else bft=5;
+    
+    document.getElementById('wxPanel').innerHTML = `
+      <div style="font-size:14px; margin-bottom:12px; padding:8px; background:rgba(0,0,0,0.3); border-radius:6px;">狀況：${wx.wx}</div>
+      <div class="w-grid">
+        <div class="w-cell"><div class="w-lbl">溫度</div><div class="w-val" style="color:${wx.temp>32?'#ff3c3c':'#00ff88'}">${wx.temp}<span class="w-unit">°C</span></div></div>
+        <div class="w-cell"><div class="w-lbl">風速</div><div class="w-val" style="color:${bft>=4?'#ff8c00':'#00d4ff'}">${bft}<span class="w-unit"> 級 (${wx.ws} m/s)</span></div></div>
+        <div class="w-cell"><div class="w-lbl">風向</div><div class="w-val" style="font-size:16px;">${wx.wd}</div></div>
+        <div class="w-cell"><div class="w-lbl">相對濕度</div><div class="w-val">${wx.rh}<span class="w-unit">%</span></div></div>
+      </div>
+    `;
+    
+    if (bft >= 4) { score -= 15; tags.push({t: `風力 ${bft} 級：水面受干擾，請加重鉛`, c: 'warn'}); }
+    if (wx.temp > 32) { score -= 10; depth = '釣深水避暑'; tags.push({t: `高溫 ${wx.temp}°C：魚群下潛避暑`, c: 'warn'}); }
+  }
+
+  // 潮汐邏輯與渲染
+  if (tide && tide.length > 0) {
+    const now = new Date();
+    const poolNow = new Date(now.getTime() - (delayHr * 3600000));
+    
+    let prev = tide[0], next = tide[tide.length-1];
+    for (let i = 0; i < tide.length; i++) {
+      if (tide[i].dt <= poolNow) prev = tide[i];
+      else { next = tide[i]; break; }
+    }
+    
+    const minSince = (poolNow - prev.dt) / 60000;
+    
+    if (minSince <= 45) { // 滿乾潮停滯期
+      score -= 20;
+      target = '底棲：花身鯻 / 三角仔';
+      depth = '沉底釣法 (尋找凹洞)';
+      document.getElementById('tidePhase').textContent = '⚓ 停潮 (死水期)';
+      document.getElementById('tideDesc').textContent = `剛經過 ${prev.type}，池水動能極低，底層可能微缺氧。`;
+      tags.push({t: '停潮死水：活性低迷，請耐心等待', c: 'bad'});
+    } else if (minSince >= 90 && minSince <= 150) { // 三分水
+      score += 35;
+      target = '掠食性：海鱺 / 瓜仔 / 鱸魚';
+      depth = '釣全水層 (跟隨魚群)';
+      document.getElementById('tidePhase').textContent = '💧 三分水 (活水激增)';
+      document.getElementById('tideDesc').textContent = '池水加速流動，翻攪底層有機物，掠食魚類開咬！';
+      tags.push({t: '三分水流動：活性極高！黃金時段', c: 'ok'});
+    } else {
+      score += 10;
+      document.getElementById('tidePhase').textContent = '➡️ 穩定流水中';
+      document.getElementById('tideDesc').textContent = '水流平穩，維持一般作釣節奏。';
+      tags.push({t: '水流穩定：魚群正常巡游', c: 'ok'});
+    }
+    
+    // 渲染今日潮位清單
+    document.getElementById('tideEvents').innerHTML = tide.map(e => {
+      const time = e.dt.toLocaleTimeString('zh-TW', {hour: '2-digit', minute: '2-digit'});
+      return `<li>${e.type === '滿潮' ? '🌊' : '⬇️'} <b>${e.type}</b>：${time} (推算池內時間約 ${new Date(e.dt.getTime() + delayHr*3600000).toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit'})})</li>`;
+    }).join('');
+  }
+
+  score = Math.max(0, Math.min(100, score));
+  document.getElementById('scoreNum').textContent = score;
+  document.getElementById('scoreNum').style.color = score >= 70 ? '#00ff88' : score >= 40 ? '#ffd700' : '#ff3c3c';
+  
+  // 魚群視覺化
+  const fishVis = document.getElementById('fishVisual');
+  if (score >= 70) { fishVis.innerHTML = '🦈 瘋狂搶食中 (高活性)'; fishVis.style.color = '#00ff88'; }
+  else if (score >= 40) { fishVis.innerHTML = '🐟 穩定索餌 (中活性)'; fishVis.style.color = '#ffd700'; }
+  else { fishVis.innerHTML = '💤 魚群休息中 (低活性)'; fishVis.style.color = '#ff3c3c'; }
+
+  document.getElementById('statusTags').innerHTML = tags.map(t => `<div class="tag ${t.c}">${t.t}</div>`).join('');
+  document.getElementById('depthVal').textContent = depth;
+  document.getElementById('fishVal').textContent = target;
+  
+  // 裝備與餌料
+  document.getElementById('gearList').innerHTML = `
+    <li>🎣 <b>釣竿：</b>${score < 50 ? '軟調 1號磯釣竿 (降低就餌阻力)' : '硬調 L/MH 路亞竿或 3號磯釣竿'}</li>
+    <li>🧵 <b>線組：</b>0.6~0.8號 PE主線 + ${wx && wx.ws > 3.4 ? '耐磨碳纖子線 (抗風)' : '透明碳纖子線'}</li>
+    <li>⚓ <b>鉛錘：</b>${wx && wx.ws > 5.5 ? '1~2錢重鉛 (抗強風)' : '極輕咬鉛 0.5錢 (自然飄落)'}</li>
+  `;
+  
+  document.getElementById('baitList').innerHTML = `
+    <li>🦐 ${score >= 70 ? '活蝦 / 新鮮白蝦肉 (最佳誘擊)' : '蝦肉丁 / 高保水粉餌 (降低警戒)'}</li>
+    ${score < 50 ? '<li>🌾 需搭配少量誘餌粉打窩，喚醒嗅覺</li>' : '<li>🐟 可嘗試金屬假餌或軟蟲主動出擊</li>'}
+  `;
+}
+</script>
+</body>
+</html>
