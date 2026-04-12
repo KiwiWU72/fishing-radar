@@ -351,25 +351,34 @@ let tideEvents=TIDE,wxRaw=null,wxWeeklyRaw=null,weekOffset=0;
 const tanks=[];let rafId=null;
 
 // ── FISH SPECIES MAP & DETAILS ──────────────────────────────────────────
+// 佳冬野生池為感潮汽水域（estuarine），物種以廣鹽性 euryhaline 魚種為主
+// 推薦邏輯：潮相（趨流性 rheotaxis / 溶氧梯度 DO）× 水溫（Q10 代謝係數）× 時段（光週期 photoperiod）
 const FISH_MAP={
-  sanfen:['海鱺','瓜仔/鰆仔','金目鱸','紅甘','白鱸'],
-  qifen:['海鱺','瓜仔/鰆仔','金目鱸','紅甘','白鱸'],
-  slack:['花身鯻','吳郭魚','鯽魚','草魚','三角仔'],
-  flowing:['鱸魚','花身鯻','三角仔','吳郭魚'],
-  default:['鱸魚','花身鯻','三角仔','吳郭魚']
+  sanfen:  ['鱸魚','花身鯻','烏魚','虱目魚','三角仔'],
+  qifen:   ['鱸魚','花身鯻','烏魚','吳郭魚','三角仔'],
+  slack:   ['吳郭魚','花身鯻','鯽魚','草魚','土虱'],
+  flowing: ['鱸魚','花身鯻','吳郭魚','三角仔','烏魚'],
+  default: ['鱸魚','花身鯻','吳郭魚','三角仔','鯽魚']
 };
 const FISH_DETAIL={
-  '海鱺':    {en:'Cobia',      icon:'🐟', reason:'洄游性大型掠食魚。水流激增時主動追餌，衝擊力強；三/七分水期咬勁最猛，是池中霸主。'},
-  '瓜仔/鰆仔':{en:'Mackerel',  icon:'🐠', reason:'高速巡游掠食魚，喜追逐水流中的活餌與鮮魚片；流水期追咬積極，反應極快，建議鐵板或活蝦。'},
-  '金目鱸':  {en:'Barramundi', icon:'🐡', reason:'夜行性視覺掠食魚，感光細胞豐富，傍晚至黃昏（15–18 時）活性急升；流水送食物順流而下時機最佳。'},
-  '紅甘':    {en:'Yellowtail', icon:'🐟', reason:'大型洄游魚。七分水頂流時貼底高速巡游，需加重咬鉛、底層作釣才能有效接觸。'},
-  '白鱸':    {en:'Snook',      icon:'🐠', reason:'岸邊伏擊型掠食魚，藏於水草或礁石邊待機咬殺；流水期帶動小魚靠岸，觸發連咬。'},
-  '花身鯻':  {en:'Tigerperch', icon:'🐡', reason:'底棲雜食魚。停潮期底層缺氧時仍能耐受，咬餌穩定；蚯蚓或蝦肉丁效果最佳。'},
-  '吳郭魚':  {en:'Tilapia',    icon:'🐠', reason:'溫水適應力最強的魚種，高溫停潮期活性最高；軟粉餌或蝦肉對其最具誘惑力。'},
-  '鯽魚':    {en:'Crucian',    icon:'🐡', reason:'底層雜食魚。停潮水靜時主動在泥底覓食，香甜粉餌打窩效果顯著。'},
-  '草魚':    {en:'Grass Carp', icon:'🐟', reason:'草食性大型魚。停潮水清時在水草帶覓食，可用麵餌或草類誘釣，咬口輕。'},
-  '三角仔':  {en:'Anchovy',    icon:'🐠', reason:'中上層群聚性小型魚。流水帶動浮游生物時大量現身，成群入窩時咬況熱烈。'},
-  '鱸魚':    {en:'Sea Bass',   icon:'🐟', reason:'日夜均活躍的全方位掠食魚。流水期在中下層伏擊，活蝦或蝦形軟蟲最具效果，釣者最愛。'},
+  '鱸魚':  {en:'Sea Bass',    icon:'🐟',
+    reason:'廣鹽性掠食魚（花鱸 Lateolabrax japonicus，耐鹽 0–30‰）。流水期對移動餌料的追咬反應由側線機械感受器（mechanoreceptor）驅動，在三/七分水流速 10–30 cm/s 時活性最高；傍晚（15–18h）光照降低後視覺系統切換高感光模式，咬況倍增。'},
+  '花身鯻':{en:'Tigerperch',  icon:'🐠',
+    reason:'底棲廣鹽性魚（Terapon jarbua，耐鹽 0–40‰，耐低氧 DO ≥ 2 mg/L）。停潮期底層 DO 下降時仍能存活並覓食，依賴嗅覺化學感受（olfactory chemoreception）定位餌料；任何潮相均有穩定咬況，是野生池最可靠的目標魚種。'},
+  '烏魚':  {en:'Mullet',      icon:'🐡',
+    reason:'群居性廣鹽性魚（鯔魚 Mugil cephalus，耐鹽 0–35‰）。三分水流速激增時大群沿水流方向高速遷移，對活餌的趨流反應（positive rheotaxis）明顯；水溫 20–28°C 為最適代謝範圍（Q10≈2），此區間咬勁最強。'},
+  '虱目魚':{en:'Milkfish',    icon:'🐟',
+    reason:'高經濟感潮池魚種（Chanos chanos，耐鹽 0–45‰，最適水溫 26–30°C）。三分水水流送入浮游生物時大量攝食，為濾食性魚種但可用粉餌或浮標釣法有效誘釣。'},
+  '吳郭魚':{en:'Tilapia',     icon:'🐠',
+    reason:'溫水廣適性魚（Oreochromis spp.，最適水溫 25–35°C，耐 DO ≥ 1 mg/L）。停潮期底層缺氧時仍能維持代謝，為停潮期佳冬野生池最確定的目標；高溫（>30°C）時活性尤其旺盛，香甜粉餌在靜水中緩釋誘食效果最佳。'},
+  '三角仔':{en:'Anchovy/Mullet Fry',icon:'🐠',
+    reason:'中上層群聚性小型魚（含鯔魚幼魚等，體長 3–8 cm）。流水帶動浮游生物（POM）向池中輸送時大量集窩，可見水面漣漪；成群後掠食魚隨之跟進，是判斷「魚口開啟」的關鍵指標魚種。'},
+  '鯽魚':  {en:'Crucian Carp', icon:'🐡',
+    reason:'耐低溫底棲魚（Carassius auratus，最適水溫 15–25°C，耐低氧性強）。停潮期最活躍；受腸道嗅覺受器（intestinal chemoreceptor）驅動，對香甜型氨基酸（alanine、glycine）反應強，打窩效果顯著。'},
+  '草魚':  {en:'Grass Carp',  icon:'🐟',
+    reason:'草食性大型魚（Ctenopharyngodon idella，最適水溫 22–28°C）。停潮水流靜止、能見度提升時主動在水草帶覓食；使用附近水草或麵餌誘釣效率高，咬口輕需細線小鉤感應。'},
+  '土虱':  {en:'Catfish',     icon:'🐟',
+    reason:'熱帶底棲夜行性魚（Clarias batrachus，耐低氧能力極強，具輔助呼吸器官）。停潮缺氧期及夜間活性最高；對腐敗性氨基酸（腥味）反應靈敏，蚯蚓或蝦肉丁在泥底層效果最佳。'},
 };
 
 // ── BAIT ENCYCLOPEDIA ───────────────────────────────────────────────────
@@ -550,14 +559,37 @@ function parseWeather(){
       }
       return null;
     }
-    const wx=cur('Wx'),ws=cur('WS'),wd=cur('WD'),tmp=cur('T'),rh=cur('RH'),pop=cur(['PoP6h','PoP12h']);
-    const windSpd=parseFloat(ws?.WindSpeed||ws?.windSpeed||ws?.Speed||ws?.SPEED||0);
-    const windDir=wd?.WindDirection||wd?.windDirection||wd?.Direction||'--';
-    const temp=parseFloat(tmp?.Temperature||tmp?.temperature||tmp?.TEMPERATURE||0)||25;
-    const humid=parseFloat(rh?.RelativeHumidity||rh?.relativeHumidity||rh?.Humidity||0)||70;
-    const weather=wx?.Weather||wx?.weather||wx?.WEATHER||'--';
-    const precipitation=parseFloat(pop?.PoP6h||pop?.PoP12h||pop?.ProbabilityOfPrecipitation||0);
-    return{weather,windSpd,windDir,temp,rh:humid,pop:precipitation,hasData:!!(ws||tmp)};
+    // F-D0047-035 element names may be English OR Chinese depending on API version
+    const wx =cur(['Wx','天氣現象']);
+    const ws =cur(['WS','風速']);
+    const wd =cur(['WD','風向']);
+    const tmp=cur(['T','溫度','平均溫度']);
+    const rh =cur(['RH','相對濕度','平均相對濕度']);
+    const pop=cur(['PoP6h','PoP12h','降雨機率','6小時降雨機率','12小時降雨機率']);
+
+    // Extract values with multi-key fallback
+    const rawWindSpd=ws?.WindSpeed??ws?.windSpeed??ws?.Speed??ws?.SPEED??ws?.['風速']??null;
+    const rawWindDir=wd?.WindDirection??wd?.windDirection??wd?.Direction??wd?.['風向']??null;
+    const rawTemp   =tmp?.Temperature??tmp?.temperature??tmp?.TEMPERATURE??tmp?.['溫度']??tmp?.['平均溫度']??null;
+    const rawHumid  =rh?.RelativeHumidity??rh?.relativeHumidity??rh?.Humidity??rh?.['相對濕度']??null;
+    const rawWeather=wx?.Weather??wx?.weather??wx?.WEATHER??wx?.['天氣現象']??null;
+    const rawPop    =pop?.PoP6h??pop?.PoP12h??pop?.ProbabilityOfPrecipitation??pop?.['降雨機率']??null;
+
+    const windSpd   = rawWindSpd!=null?parseFloat(rawWindSpd):null;
+    const windDir   = rawWindDir||null;
+    const temp      = rawTemp!=null?parseFloat(rawTemp):null;
+    const humid     = rawHumid!=null?parseFloat(rawHumid):null;
+    const weather   = rawWeather||null;
+    const precipitation = rawPop!=null?parseFloat(rawPop):null;
+
+    // Only return data if temperature is available (minimum usable signal)
+    if(temp==null&&windSpd==null&&weather==null)return null;
+    return{
+      weather,windSpd,windDir,
+      temp:temp??25,rh:humid??70,pop:precipitation??0,
+      hasWind:windSpd!=null,hasWeather:weather!=null,
+      hasData:true
+    };
   }catch(e){console.error(e);return null;}
 }
 
@@ -674,29 +706,67 @@ function calcDayScore(dayStr,events,delay){
   return{score:best,bestHr,rangeStr:fmt(rS)+'~'+fmt(rE),topFish};
 }
 
+// ── CONTEXTUAL FISH SELECTION ──────────────────────────────────────────────
+// 整合潮相 × 時段 × 水溫 三個維度，符合佳冬感潮野生池實際物種
+function getContextualFish(pkey, hr, temp){
+  // 基底：潮相決定趨流性物種排序
+  let base=[...(FISH_MAP[pkey]||FISH_MAP.default)];
+
+  // 時段疊加（photoperiod / 溶氧日週期）
+  if(hr>=4&&hr<7){
+    // 清晨：夜間底層 DO 積累低點，花身鯻/吳郭魚耐低氧物種優先
+    base=uniq(['花身鯻','吳郭魚','土虱',...base]);
+  }else if(hr>=15&&hr<18){
+    // 黃昏溶氧顛峰（光合作用累積）→ 掠食魚爆發
+    base=uniq(['鱸魚','花身鯻','烏魚',...base]);
+  }else if(hr>=18||hr<4){
+    // 夜間：光敏感視覺掠食魚＋底棲夜行魚
+    base=uniq(['鱸魚','土虱','花身鯻',...base]);
+  }
+
+  // 水溫疊加（Q10 效應，代謝速率每升 10°C 約倍增）
+  if(temp!=null){
+    if(temp>30){
+      // 高溫：熱帶廣適物種（吳郭魚 Topt=30°C，虱目魚 Topt=28°C）
+      base=uniq(['吳郭魚','虱目魚','土虱',...base]);
+    }else if(temp<20){
+      // 低溫：溫帶耐寒物種（鯽魚 Topt=15°C，草魚 Topt=20°C）
+      base=uniq(['鯽魚','草魚',...base]);
+    }else if(temp>=22&&temp<=28){
+      // 最適水溫帶：鱸魚/烏魚活性最高（Topt 22–28°C）
+      base=uniq(['鱸魚','烏魚',...base]);
+    }
+  }
+
+  return base.slice(0,5);
+}
+function uniq(arr){return arr.filter((v,i,a)=>a.indexOf(v)===i);}
+
 // ── RULE ENGINE ───────────────────────────────────────────────────────────
 function runEngine(events,wx,delay){
   const now=new Date(),hr=now.getHours()+now.getMinutes()/60;
-  let score=50,tags=[],fish=[],windNote='';
+  const temp=wx?.temp??null;
+  let score=50,tags=[],windNote='';
   const ph=getTidePhaseAt(events,delay,now),pkey=ph?.phase||'unknown';
 
-  if(pkey==='sanfen'){score+=25;tags.push({t:'【三分水 · 水流激增：掠食性魚類活性極高！】',c:'ok'});fish=FISH_MAP.sanfen;}
-  else if(pkey==='qifen'){score+=30;tags.push({t:'【七分水 · 頂流時刻：大物出沒！】',c:'ok'});fish=FISH_MAP.qifen;}
-  else if(pkey==='slack'){score-=20;tags.push({t:'【停潮死水：底層缺氧，活性低迷】',c:'bad'});fish=FISH_MAP.slack;}
-  else if(pkey==='flowing'){score+=8;tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});fish=FISH_MAP.flowing;}
-  else{fish=FISH_MAP.default;tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});}
+  if(pkey==='sanfen'){score+=25;tags.push({t:'【三分水 · 流速激增（rheotaxis 觸發）：掠食性魚類活性極高！】',c:'ok'});}
+  else if(pkey==='qifen'){score+=30;tags.push({t:'【七分水 · 頂流時刻（DO 峰值）：大物出沒！】',c:'ok'});}
+  else if(pkey==='slack'){score-=20;tags.push({t:'【停潮死水：底層 DO 下降，活性低迷】',c:'bad'});}
+  else if(pkey==='flowing'){score+=8;tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});}
+  else{tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});}
 
-  if(hr>=15&&hr<18){score+=15;tags.push({t:'【黃昏溶氧顛峰：黃金咬擊期 15:00–18:00 🌅】',c:'gold'});}
-  if(hr>=4&&hr<7){score+=5;tags.push({t:'【清晨缺氧期：建議釣淺水或水面 🌄】',c:'warn'});}
+  if(hr>=15&&hr<18){score+=15;tags.push({t:'【黃昏溶氧顛峰（光合↑）：黃金咬擊期 15:00–18:00 🌅】',c:'gold'});}
+  if(hr>=4&&hr<7){score+=5;tags.push({t:'【清晨底層缺氧（DO 谷底）：釣淺水/水面耐氧魚 🌄】',c:'warn'});}
 
   if(wx){
     const bft=bf(wx.windSpd);
-    if(bft>=4){score-=10;windNote='加重咬鉛防風阻';tags.push({t:`【風力 ${bft} 級：加重咬鉛，降低水面風阻干擾】`,c:'warn'});}
-    if(wx.temp>32){score-=5;tags.push({t:`【高溫 ${wx.temp}°C：避暑模式 → 底層陰影或深水區】`,c:'warn'});}
-    if(wx.temp<18){score-=8;tags.push({t:`【低溫 ${wx.temp}°C：魚類代謝下降，咬況遲緩】`,c:'bad'});}
-    if(wx.temp>=20&&wx.temp<=28)score+=8;
+    if(bft>=4){score-=10;windNote='加重咬鉛防風阻';tags.push({t:`【風力 ${bft} 級 (≥8 m/s)：加重咬鉛，降低水面風阻干擾】`,c:'warn'});}
+    if(temp>32){score-=5;tags.push({t:`【高溫 ${temp}°C：Q10↑ 代謝耗氧增加，釣底層陰影區】`,c:'warn'});}
+    if(temp<18){score-=8;tags.push({t:`【低溫 ${temp}°C：Q10↓ 魚類代謝降速，咬況遲緩】`,c:'bad'});}
+    if(temp>=20&&temp<=28)score+=8;
   }
   score=Math.max(0,Math.min(100,Math.round(score)));
+  const fish=getContextualFish(pkey,hr,temp);
   return{score,tags,fish,gear:buildGear(pkey,wx,windNote),baits:buildBaits(pkey,wx),ph,pkey};
 }
 
@@ -915,11 +985,11 @@ function renderTide(events,ph,delay){
       flowing:['➡️ 流水中','#5a6e99']
     };
     [txt,col]=m[ph.phase]||['➡️ 流水中','#5a6e99'];
-    if(ph.minSince!=null)txt+=`（${ph.prev.type}後 ${Math.round(ph.minSince)} 分）`;
+    if(ph.minSince!=null)txt+=`（${ph.prev.type}後 ${fmtDur(ph.minSince)}）`;
     if(ph.next&&ph.minTo!=null){
       const nt=new Date(ph.next.dt.getTime()+delay*3600000);
       const timeStr=nt.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:true});
-      txt+=`　→　下次${ph.next.type} ${timeStr}（${Math.round(ph.minTo)}分後）`;
+      txt+=`　→　下次${ph.next.type} ${timeStr}（${fmtDur(ph.minTo)}後）`;
     }
   }else if(events&&events.length){
     const next=(events||[]).find(e=>new Date(e.dt.getTime()+delay*3600000)>now);
@@ -927,7 +997,7 @@ function renderTide(events,ph,delay){
       const nt=new Date(next.dt.getTime()+delay*3600000);
       const timeStr=nt.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:true});
       const minTo=(nt-now)/60000;
-      txt=`下次${next.type} ${timeStr}（${Math.round(minTo)}分後）`;col='var(--t)';
+      txt=`下次${next.type} ${timeStr}（${fmtDur(minTo)}後）`;col='var(--t)';
     }else{txt='流水中';col='#5a6e99';}
   }else{txt='潮汐資料就緒';col='var(--t2)';}
   const el=document.getElementById('tidePhase');el.textContent=txt;el.style.color=col;
@@ -985,38 +1055,33 @@ function renderWx(wx){
   const el=document.getElementById('wxPanel');
   const weeklyDays=parseWeeklyWeather();
 
-  // Current conditions block
+  // Current conditions block — only render cells that have real data
   let curHtml='';
   if(!wx){
-    curHtml=`
-    <div class="wx-grid">
-      <div class="wx-cell"><div class="wx-lbl">溫度</div><div class="wx-val" style="color:var(--t2)">--<span class="wx-unit">°C</span></div></div>
-      <div class="wx-cell"><div class="wx-lbl">風速</div><div class="wx-val" style="color:var(--t2)">--<span class="wx-unit"> 級</span></div></div>
-      <div class="wx-cell"><div class="wx-lbl">相對濕度</div><div class="wx-val" style="color:var(--t2)">--<span class="wx-unit">%</span></div></div>
-    </div>
-    <div class="wx-bot">
-      <div class="wx-bot-cell"><div class="wx-bot-lbl">天氣</div><div class="wx-bot-val" style="color:var(--t2)">按 ⚙️ 輸入 API Key</div></div>
-      <div class="wx-bot-cell"><div class="wx-bot-lbl">風向</div><div class="wx-bot-val" style="color:var(--t2)">--</div></div>
-    </div>`;
+    curHtml=`<div style="color:var(--t2);font-size:11px;padding:8px 0">按右上角 ⚙️ 輸入 API Key 以載入即時天氣</div>`;
   }else{
-    const bft=bf(wx.windSpd);
-    const wc=bft>=5?'#ff3c3c':bft>=4?'#ffd700':bft>=3?'#00d4ff':'#7a99bb';
     const tc=wx.temp>32?'#ff3c3c':wx.temp>28?'#ff8c00':wx.temp>=20?'#00ff88':'#00d4ff';
     const hc=wx.rh>85?'#ff8c00':wx.rh>=60?'#00ff88':'#00d4ff';
+    // Wind cell — only if data available
+    const windCell=wx.hasWind?(()=>{
+      const bft=bf(wx.windSpd);
+      const wc=bft>=5?'#ff3c3c':bft>=4?'#ffd700':bft>=3?'#00d4ff':'#7a99bb';
+      return `<div class="wx-cell"><div class="wx-lbl">風速</div><div class="wx-val" style="color:${wc}">${bft}<span class="wx-unit"> 級${bft>0?' ('+wx.windSpd.toFixed(1)+'m/s)':''}</span></div></div>`;
+    })():'';
+    // How many columns: 3 if wind present, 2 if not
+    const gridCols=wx.hasWind?'repeat(3,1fr)':'repeat(2,1fr)';
+    // Bottom row cells — only if data present
+    const weatherCell=wx.hasWeather?`<div class="wx-bot-cell"><div class="wx-bot-lbl">天氣現象</div><div class="wx-bot-val">${wx.weather}${wx.pop>0?` <span style="color:#7aa0cc;font-size:10px;">☔${wx.pop}%</span>`:''}</div></div>`:'';
+    const windDirCell=(wx.hasWind&&wx.windDir)?`<div class="wx-bot-cell"><div class="wx-bot-lbl">風向</div><div class="wx-bot-val">${wx.windDir||'<span style="color:var(--t2)">--</span>'}</div></div>`:'';
+    const hasBotRow=wx.hasWeather||(wx.hasWind&&wx.windDir);
     curHtml=`
-    <div class="wx-grid">
+    <div class="wx-grid" style="grid-template-columns:${gridCols}">
       <div class="wx-cell"><div class="wx-lbl">溫度</div><div class="wx-val" style="color:${tc}">${wx.temp}<span class="wx-unit">°C</span></div></div>
-      <div class="wx-cell"><div class="wx-lbl">風速</div><div class="wx-val" style="color:${wc}">${bft}<span class="wx-unit"> 級${bft>0?' ('+wx.windSpd.toFixed(1)+'m/s)':''}</span></div></div>
+      ${windCell}
       <div class="wx-cell"><div class="wx-lbl">相對濕度</div><div class="wx-val" style="color:${hc}">${wx.rh}<span class="wx-unit">%</span></div></div>
     </div>
-    <div class="wx-bot">
-      <div class="wx-bot-cell"><div class="wx-bot-lbl">天氣現象</div>
-        <div class="wx-bot-val">${wx.weather}${wx.pop>0?` <span style="color:#7aa0cc;font-size:10px;">雨率${wx.pop}%</span>`:''}</div>
-      </div>
-      <div class="wx-bot-cell"><div class="wx-bot-lbl">風向</div>
-        <div class="wx-bot-val">${wx.windDir==='--'?'<span style="color:var(--t2)">微風無明顯風向</span>':wx.windDir}</div>
-      </div>
-    </div>`;
+    ${hasBotRow?`<div class="wx-bot" style="grid-template-columns:${weatherCell&&windDirCell?'1fr 1fr':weatherCell?'1fr':'1fr'}">${weatherCell}${windDirCell}</div>`:''}
+    `;
   }
 
   // Weekly forecast block
@@ -1050,6 +1115,13 @@ function renderWx(wx){
 // ── UTILS ─────────────────────────────────────────────────────────────────
 function setConn(ok,txt){document.getElementById('dotEl').className='dot '+(ok===true?'on':'off');document.getElementById('connTxt').textContent=txt;}
 function fmtDate(d){return d.toISOString().slice(0,10);}
+// 將分鐘數轉為「X 小時 Y 分」，< 60 分只顯示「Y 分」
+function fmtDur(min){
+  const m=Math.round(min);
+  const h=Math.floor(m/60),mm=m%60;
+  if(h>0)return mm>0?`${h} 小時 ${mm} 分`:`${h} 小時`;
+  return `${mm} 分`;
+}
 
 window.addEventListener('resize',()=>{
   drawMainTide(tideEvents,parseFloat(document.getElementById('delayPick').value));
