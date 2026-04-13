@@ -129,6 +129,31 @@ select.sel:focus{border-color:var(--c)}
 .dconf-fill{height:100%;border-radius:99px;transition:width .8s ease}
 .dconf-pct{font-size:9px;font-weight:900;min-width:24px;text-align:right;white-space:nowrap}
 
+/* ─ PHASE LEGEND ─ */
+.phase-leg{margin:10px 0 6px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.18);border:1px solid var(--bd)}
+.phase-leg-title{font-size:9px;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:7px}
+.phase-leg-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.plg-item{display:flex;flex-direction:column;gap:2px;padding:5px 7px;border-radius:6px;border:1px solid}
+.plg-head{font-size:10px;font-weight:800;display:flex;align-items:center;gap:4px}
+.plg-body{font-size:9px;color:var(--t2);line-height:1.45}
+.plg-time{font-size:9px;font-weight:700;margin-top:2px}
+
+/* ─ GOLDEN TIMELINE ─ */
+.gold-title{font-size:9px;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:7px;margin-top:10px}
+.gold-row{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:7px;margin-bottom:4px;border:1px solid var(--bd);background:rgba(0,0,0,.15);transition:all .3s}
+.gold-row-now{border-color:rgba(255,215,0,.55)!important;background:rgba(255,215,0,.06)!important;box-shadow:0 0 12px rgba(255,215,0,.12)!important}
+.gold-row-past{opacity:.45}
+.gold-dir{font-size:16px;flex-shrink:0;width:20px;text-align:center}
+.gold-info{flex:1;min-width:0}
+.gold-lbl{font-size:11px;font-weight:800;letter-spacing:.3px}
+.gold-sub{font-size:9px;color:var(--t2);margin-top:1px}
+.gold-time{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.gold-grade{font-size:9px;font-weight:900;padding:1px 6px;border-radius:4px;border:1px solid;flex-shrink:0;letter-spacing:.5px}
+.gold-state{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700;white-space:nowrap;flex-shrink:0}
+.now-state{background:rgba(255,215,0,.2);border:1px solid rgba(255,215,0,.5);color:#ffd700}
+.past-state{background:rgba(80,90,110,.12);border:1px solid var(--bd);color:var(--t2)}
+.up-state{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);color:var(--c)}
+
 /* ─ TIDE ─ */
 .tide-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .tide-phase{font-size:13px;font-weight:800;transition:color .4s;line-height:1.4;flex:1}
@@ -338,6 +363,8 @@ select.sel:focus{border-color:var(--c)}
       <canvas id="tideCanvas"></canvas>
       <div id="todayDateLbl" style="font-size:9px;color:var(--t2);margin-top:7px;"></div>
       <div class="tide-chips" id="tideChips"></div>
+      <div id="goldenTimeline"></div>
+      <div id="phaseLegend"></div>
       <div class="tide-table-wrap">
         <div class="tide-table-hd">
           <span>潮汐表（當週）</span>
@@ -404,11 +431,13 @@ const tanks=[];let rafId=null;
 // 佳冬野生池為感潮汽水域（estuarine），物種以廣鹽性 euryhaline 魚種為主
 // 推薦邏輯：潮相（趨流性 rheotaxis / 溶氧梯度 DO）× 水溫（Q10 代謝係數）× 時段（光週期 photoperiod）
 const FISH_MAP={
-  sanfen:  ['鱸魚','花身鯻','烏魚','虱目魚','三角仔'],
-  qifen:   ['鱸魚','花身鯻','烏魚','吳郭魚','三角仔'],
-  slack:   ['吳郭魚','花身鯻','鯽魚','草魚','土虱'],
-  flowing: ['鱸魚','花身鯻','吳郭魚','三角仔','烏魚'],
-  default: ['鱸魚','花身鯻','吳郭魚','三角仔','鯽魚']
+  sanfen:        ['鱸魚','花身鯻','烏魚','虱目魚','三角仔'],   // 退三分水
+  rising_sanfen: ['鱸魚','花身鯻','烏魚','虱目魚','三角仔'],   // 漲三分水
+  qifen:         ['鱸魚','花身鯻','烏魚','吳郭魚','三角仔'],   // 退七分水
+  rising_qifen:  ['鱸魚','花身鯻','烏魚','吳郭魚','三角仔'],   // 漲七分水
+  slack:         ['吳郭魚','花身鯻','鯽魚','草魚','土虱'],
+  flowing:       ['鱸魚','花身鯻','吳郭魚','三角仔','烏魚'],
+  default:       ['鱸魚','花身鯻','吳郭魚','三角仔','鯽魚']
 };
 const FISH_DETAIL={
   '鱸魚':  {en:'Sea Bass',    icon:'🐟',
@@ -787,18 +816,21 @@ function wxIcon(code,desc){
 }
 
 // ── TIDE PHASE ENGINE ─────────────────────────────────────────────────────
+// 同時辨識漲潮（乾潮後）與退潮（滿潮後）的三/七分水
+// isRising=true → 漲潮相；isRising=false → 退潮相
 function getTidePhaseAt(events,delayHr,refTime){
   if(!events||!events.length)return null;
   const poolNow=new Date(refTime.getTime()-delayHr*3600000);
   let prev=null,next=null;
   for(let i=0;i<events.length;i++){if(events[i].dt<=poolNow)prev=events[i];else{next=events[i];break;}}
-  if(!prev)return{phase:'unknown',prev:null,next,minSince:null,minTo:next?(next.dt-poolNow)/60000:null};
+  if(!prev)return{phase:'unknown',prev:null,next,minSince:null,minTo:next?(next.dt-poolNow)/60000:null,isRising:false};
   const minSince=(poolNow-prev.dt)/60000,minTo=next?(next.dt-poolNow)/60000:null;
+  const isRising=prev.type==='乾潮'; // 乾潮後為漲潮相，滿潮後為退潮相
   let phase='flowing';
   if(minSince<=30||(minTo!=null&&minTo<=30))phase='slack';
-  else if(minSince>=90&&minSince<=120)phase='sanfen';
-  else if(minSince>=240&&minSince<=270)phase='qifen';
-  return{phase,prev,next,minSince,minTo};
+  else if(minSince>=90&&minSince<=120) phase=isRising?'rising_sanfen':'sanfen';
+  else if(minSince>=240&&minSince<=270) phase=isRising?'rising_qifen':'qifen';
+  return{phase,prev,next,minSince,minTo,isRising};
 }
 function bf(ms){if(ms<0.3)return 0;if(ms<1.6)return 1;if(ms<3.4)return 2;if(ms<5.5)return 3;if(ms<8.0)return 4;if(ms<10.8)return 5;if(ms<13.9)return 6;return 7;}
 
@@ -986,20 +1018,23 @@ function renderScoreCmp(current,todayPeak,todayPeakHr,weekBest,weekBestDay){
 // 底層邏輯：rheotaxis 趨流性 + Q10 代謝效應 + photoperiod 光週期
 function calcFishActivity(name,pkey,hr,temp){
   let s=42; // 基線代謝活性
-  // ── 潮相疊加（rheotaxis 觸發閾值）
-  const phBonus={sanfen:28,qifen:32,flowing:14,slack:-12,unknown:10};
+  // ── 潮相疊加（rheotaxis 觸發閾值；漲潮與退潮同等效果）
+  const phBonus={
+    sanfen:28,rising_sanfen:24,
+    qifen:32, rising_qifen:28,
+    flowing:14,slack:-12,unknown:10};
   s+=phBonus[pkey]||0;
-  // ── 物種特異性潮相偏好
+  // ── 物種特異性潮相偏好（rising_ keys 對應同向退潮偏好）
   const phSpec={
-    '鱸魚':   {sanfen:12,qifen:8, flowing:4, slack:-18,unknown:4},
-    '花身鯻': {sanfen:8, qifen:8, flowing:8, slack:8,  unknown:8},  // 耐低氧，停潮也穩
-    '烏魚':   {sanfen:18,qifen:8, flowing:4, slack:-20,unknown:4},
-    '虱目魚': {sanfen:14,qifen:4, flowing:4, slack:-10,unknown:4},
-    '吳郭魚': {sanfen:-2,qifen:4, flowing:4, slack:16, unknown:4},  // 停潮期耐低氧首選
-    '三角仔': {sanfen:18,qifen:8, flowing:8, slack:-16,unknown:8},
-    '鯽魚':   {sanfen:-6,qifen:4, flowing:4, slack:18, unknown:4},
-    '草魚':   {sanfen:-10,qifen:0,flowing:4, slack:18, unknown:4},
-    '土虱':   {sanfen:-16,qifen:-6,flowing:0,slack:24, unknown:0},  // 停潮夜釣神魚
+    '鱸魚':   {sanfen:12,rising_sanfen:10,qifen:8, rising_qifen:7, flowing:4, slack:-18,unknown:4},
+    '花身鯻': {sanfen:8, rising_sanfen:8, qifen:8, rising_qifen:8, flowing:8, slack:8,  unknown:8},
+    '烏魚':   {sanfen:18,rising_sanfen:16,qifen:8, rising_qifen:7, flowing:4, slack:-20,unknown:4},
+    '虱目魚': {sanfen:14,rising_sanfen:12,qifen:4, rising_qifen:4, flowing:4, slack:-10,unknown:4},
+    '吳郭魚': {sanfen:-2,rising_sanfen:-2,qifen:4, rising_qifen:4, flowing:4, slack:16, unknown:4},
+    '三角仔': {sanfen:18,rising_sanfen:16,qifen:8, rising_qifen:8, flowing:8, slack:-16,unknown:8},
+    '鯽魚':   {sanfen:-6,rising_sanfen:-6,qifen:4, rising_qifen:4, flowing:4, slack:18, unknown:4},
+    '草魚':   {sanfen:-10,rising_sanfen:-10,qifen:0,rising_qifen:0,flowing:4, slack:18, unknown:4},
+    '土虱':   {sanfen:-16,rising_sanfen:-16,qifen:-6,rising_qifen:-6,flowing:0,slack:24,unknown:0},
   };
   s+=(phSpec[name]?.[pkey]||0);
   // ── 時段疊加（photoperiod / DO 日週期）
@@ -1031,11 +1066,13 @@ function runEngine(events,wx,delay){
   let score=50,tags=[],windNote='';
   const ph=getTidePhaseAt(events,delay,now),pkey=ph?.phase||'unknown';
 
-  if(pkey==='sanfen'){score+=25;tags.push({t:'【三分水 · 流速激增（rheotaxis 觸發）：掠食性魚類活性極高！】',c:'ok'});}
-  else if(pkey==='qifen'){score+=30;tags.push({t:'【七分水 · 頂流時刻（DO 峰值）：大物出沒！】',c:'ok'});}
-  else if(pkey==='slack'){score-=20;tags.push({t:'【停潮死水：底層 DO 下降，活性低迷】',c:'bad'});}
-  else if(pkey==='flowing'){score+=8;tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});}
-  else{tags.push({t:'【流水期：中等咬況，持續觀察】',c:'info'});}
+  if(pkey==='sanfen'){score+=25;tags.push({t:'【⬇️ 退三分水 · 退流激增（rheotaxis 觸發）：掠食性魚類活性極高！】',c:'ok'});}
+  else if(pkey==='qifen'){score+=30;tags.push({t:'【⬇️ 退七分水 · 頂退流（DO 峰值）：大物出沒！】',c:'ok'});}
+  else if(pkey==='rising_sanfen'){score+=22;tags.push({t:'【⬆️ 漲三分水 · 進流激增：掠食魚追流開口！】',c:'ok'});}
+  else if(pkey==='rising_qifen'){score+=28;tags.push({t:'【⬆️ 漲七分水 · 頂漲流：大型魚逐流衝刺！】',c:'ok'});}
+  else if(pkey==='slack'){score-=20;tags.push({t:'【⚓ 停潮死水：底層 DO 下降，活性低迷】',c:'bad'});}
+  else if(pkey==='flowing'){score+=8;tags.push({t:'【➡️ 流水期：中等咬況，持續觀察】',c:'info'});}
+  else{tags.push({t:'【➡️ 流水期：中等咬況，持續觀察】',c:'info'});}
 
   if(hr>=15&&hr<18){score+=15;tags.push({t:'【黃昏溶氧顛峰（光合↑）：黃金咬擊期 15:00–18:00 🌅】',c:'gold'});}
   if(hr>=4&&hr<7){score+=5;tags.push({t:'【清晨底層缺氧（DO 谷底）：釣淺水/水面耐氧魚 🌄】',c:'warn'});}
@@ -1093,11 +1130,11 @@ function buildBaits(phase,wx){
 // ── DEPTH SCHEDULE (1-hour intervals + confidence bars) ──────────────────
 // confidence 計算：潮相基值 × 時段加成 → 反映「釣棚命中率」的期望值
 function depthConf(pk,h){
-  const base={sanfen:82,qifen:88,flowing:60,slack:28,unknown:55};
+  const base={sanfen:82,rising_sanfen:78,qifen:88,rising_qifen:84,flowing:60,slack:28,unknown:55};
   let c=base[pk]||55;
-  if(h>=15&&h<18)c=Math.min(100,c+12); // 黃金時段
-  if(h>=4&&h<7)c=Math.max(10,c-5);    // 清晨缺氧修正
-  if(h>=20||h<5)c=Math.max(10,c-8);   // 深夜低能見度修正
+  if(h>=15&&h<18)c=Math.min(100,c+12);
+  if(h>=4&&h<7)c=Math.max(10,c-5);
+  if(h>=20||h<5)c=Math.max(10,c-8);
   return Math.round(c);
 }
 function renderDepthSchedule(events,delay,pkey){
@@ -1109,19 +1146,24 @@ function renderDepthSchedule(events,delay,pkey){
     const t=new Date(todayStr+'T'+String(h).padStart(2,'0')+':00:00+08:00');
     const ph=getTidePhaseAt(events,delay,t);
     const pk=ph?.phase||'flowing';
-    let depth,col,icon;
-    if(pk==='sanfen'){depth='全水層追魚';col='#00ff88';icon='🌊';}
-    else if(pk==='qifen'){depth='底層貼底';col='#00d4ff';icon='🎣';}
+    let depth,col,icon,goldLabel='';
+    if(pk==='sanfen'){depth='全水層追魚';col='#00ff88';icon='⬇️';goldLabel='退三';}
+    else if(pk==='qifen'){depth='底層貼底';col='#00d4ff';icon='⬇️';goldLabel='退七';}
+    else if(pk==='rising_sanfen'){depth='全水層追魚';col='#00d4ff';icon='⬆️';goldLabel='漲三';}
+    else if(pk==='rising_qifen'){depth='中上層衝流';col='#00ff88';icon='⬆️';goldLabel='漲七';}
     else if(pk==='slack'){depth='淺水/水面';col='#ff3c3c';icon='⚓';}
     else{depth='中下層';col='#ffd700';icon='➡️';}
-    if(h>=4&&h<7&&pk!=='sanfen'&&pk!=='qifen'){depth='淺水（清晨缺氧）';col='#a78bfa';icon='🌄';}
-    const golden=(h>=15&&h<18)?'<span style="font-size:9px;color:#ffd700;margin-left:3px">⭐</span>':'';
+    // 清晨缺氧覆蓋（低潮相期間）
+    const isFlow=pk!=='sanfen'&&pk!=='qifen'&&pk!=='rising_sanfen'&&pk!=='rising_qifen';
+    if(h>=4&&h<7&&isFlow){depth='淺水（清晨缺氧）';col='#a78bfa';icon='🌄';}
+    const goldenTag=goldLabel?`<span style="font-size:8px;background:rgba(0,212,255,.12);border:1px solid rgba(0,212,255,.4);color:var(--c);padding:0 4px;border-radius:3px;margin-left:3px">${goldLabel}</span>`:'';
+    const goldenHr=(h>=15&&h<18)?'<span style="font-size:9px;color:#ffd700;margin-left:2px">⭐</span>':'';
     const isNow=h===nowHr&&fmtDate(t)===fmtDate(now);
     const cf=depthConf(pk,h);
     const cfCol=cf>=80?'#00ff88':cf>=60?'#ffd700':cf>=40?'#ff8c00':'#ff3c3c';
     rows+=`<tr class="${isNow?'now-hr':''}">
       <td style="color:var(--t2);white-space:nowrap;font-size:9px">${icon} ${String(h).padStart(2,'0')}:00</td>
-      <td style="color:${col};font-weight:${isNow?'800':'500'};font-size:10px">${depth}${golden}</td>
+      <td style="color:${col};font-weight:${isNow?'800':'500'};font-size:10px">${depth}${goldenTag}${goldenHr}</td>
       <td>
         <div class="dconf-wrap">
           <div class="dconf-track"><div class="dconf-fill" style="width:${cf}%;background:${cfCol}"></div></div>
@@ -1194,17 +1236,19 @@ function renderWeek(events,delay,offset){
 }
 
 // ── Q-VERSION FISH SPECIES ────────────────────────────────────────────────
+// vel: 相對游速倍率（以鱸魚突擊速 ≈2 m/s 為基準設為 2.2；土虱 ≈0.3 m/s 設為 0.4）
+// zone: 'top'=上層, 'mid'=中層, 'bot'=底層（影響 y 初始位置）
 const SPECIES_POOL=['鱸魚','花身鯻','烏魚','虱目魚','吳郭魚','鯽魚','草魚','三角仔','土虱'];
 const SPECIES_CFG={
-  '鱸魚':  {bc:'#c8d8e8',fc:'#8aaac8',ratio:.44,tlen:.65,type:'bass',   szm:1.1},
-  '花身鯻':{bc:'#f0c040',fc:'#b08000',ratio:.60,tlen:.50,type:'tiger',  szm:1.0},
-  '烏魚':  {bc:'#6888a8',fc:'#405878',ratio:.38,tlen:.72,type:'mullet', szm:1.2},
-  '虱目魚':{bc:'#b8e0f8',fc:'#70a8d0',ratio:.40,tlen:.90,type:'milk',   szm:1.1},
-  '吳郭魚':{bc:'#e07830',fc:'#a04010',ratio:.60,tlen:.44,type:'tilapia',szm:1.0},
-  '鯽魚':  {bc:'#f0d060',fc:'#c09820',ratio:.68,tlen:.40,type:'crucian',szm:0.9},
-  '草魚':  {bc:'#7aaa50',fc:'#4a7a28',ratio:.40,tlen:.62,type:'grass',  szm:1.3},
-  '三角仔':{bc:'#b0eeff',fc:'#70c0e8',ratio:.30,tlen:.55,type:'small',  szm:0.5},
-  '土虱':  {bc:'#484858',fc:'#282838',ratio:.52,tlen:.42,type:'catfish',szm:1.0},
+  '鱸魚':  {bc:'#b8ccd8',fc:'#5a7898',ratio:.35,tlen:.60,type:'bass',   szm:1.15,vel:2.2,zone:'mid'},
+  '花身鯻':{bc:'#e8b820',fc:'#906000',ratio:.58,tlen:.48,type:'tiger',  szm:1.0, vel:1.3,zone:'mid'},
+  '烏魚':  {bc:'#5a7088',fc:'#303c50',ratio:.33,tlen:.80,type:'mullet', szm:1.2, vel:2.0,zone:'top'},
+  '虱目魚':{bc:'#d8eeff',fc:'#80b8e0',ratio:.32,tlen:.95,type:'milk',   szm:1.1, vel:1.7,zone:'top'},
+  '吳郭魚':{bc:'#d86820',fc:'#8c3808',ratio:.58,tlen:.42,type:'tilapia',szm:1.0, vel:1.0,zone:'mid'},
+  '鯽魚':  {bc:'#e8c840',fc:'#a07810',ratio:.70,tlen:.38,type:'crucian',szm:0.9, vel:0.7,zone:'bot'},
+  '草魚':  {bc:'#6a9840',fc:'#3a6818',ratio:.36,tlen:.60,type:'grass',  szm:1.3, vel:1.2,zone:'mid'},
+  '三角仔':{bc:'#c8f0ff',fc:'#70c0e8',ratio:.28,tlen:.52,type:'small',  szm:0.5, vel:1.0,zone:'top'},
+  '土虱':  {bc:'#383848',fc:'#181828',ratio:.48,tlen:.40,type:'catfish',szm:1.0, vel:0.4,zone:'bot'},
 };
 
 // ── FISH TANK ANIMATION ───────────────────────────────────────────────────
@@ -1218,10 +1262,22 @@ function initTanks(){
     for(let i=0;i<n;i++){
       const sp=SPECIES_POOL[~~(Math.random()*SPECIES_POOL.length)];
       const cfg=SPECIES_CFG[sp];
-      fish.push({x:Math.random()*W,y:10+Math.random()*(H-24),
-        vx:(0.35+Math.random()*.8)*spd*(Math.random()>.5?1:-1),
-        wb:Math.random()*Math.PI*2,wbs:.04+Math.random()*.04,
-        sz:(6+Math.random()*5)*cfg.szm,species:sp,W,H});
+      // 依水層（zone）設定 y 初始範圍
+      let yMin,yMax;
+      if(cfg.zone==='top'){yMin=5;yMax=H*0.45;}
+      else if(cfg.zone==='bot'){yMin=H*0.5;yMax=H-14;}
+      else{yMin=H*0.2;yMax=H*0.75;}
+      // 游速 = 基礎速度 × 物種速度係數（vel）× 日指數加成（spd）
+      // 底棲魚（土虱/鯽魚）增加上下起伏幅度（wbs較低，但y會緩慢漂移）
+      const baseV=(0.4+Math.random()*0.6)*cfg.vel*spd;
+      const wbSpeed=cfg.vel>=1.5?(0.07+Math.random()*0.06):(0.02+Math.random()*0.03);
+      fish.push({x:Math.random()*W,y:yMin+Math.random()*(yMax-yMin),
+        vx:baseV*(Math.random()>.5?1:-1),
+        vy:0, // 垂直方向緩漂，僅底棲魚使用
+        vySgn:Math.random()>.5?1:-1,
+        yMin,yMax,
+        wb:Math.random()*Math.PI*2,wbs:wbSpeed,
+        sz:(6+Math.random()*4)*cfg.szm,species:sp,W,H});
     }
     const bubs=[];
     for(let i=0;i<Math.floor(score/18);i++)bubs.push({x:Math.random()*W,y:H,vy:-(0.3+Math.random()*.5),r:1+Math.random()*1.5,a:.4+Math.random()*.3});
@@ -1234,95 +1290,242 @@ function drawQFish(ctx,f){
   const cfg=SPECIES_CFG[species]||SPECIES_CFG['鱸魚'];
   const s=sz;
   ctx.save();
-  ctx.translate(x,y+Math.sin(wb)*2.5);
+  ctx.translate(x,y+Math.sin(wb)*1.8);
   if(vx<0)ctx.scale(-1,1);
-  ctx.globalAlpha=.88;
+  ctx.globalAlpha=.92;
 
-  // ── Tail fin ──
-  ctx.beginPath();
-  if(cfg.type==='milk'||cfg.type==='mullet'){
-    // Forked tail
-    ctx.moveTo(-s*.75,0);ctx.lineTo(-s*(1+cfg.tlen),-s*cfg.tlen*.55);ctx.lineTo(-s*.9,0);
-    ctx.moveTo(-s*.75,0);ctx.lineTo(-s*(1+cfg.tlen), s*cfg.tlen*.55);ctx.lineTo(-s*.9,0);
-  }else{
-    ctx.moveTo(-s*.78,0);ctx.lineTo(-s*(1+cfg.tlen*.7),-s*cfg.tlen*.48);ctx.lineTo(-s*(1+cfg.tlen*.7),s*cfg.tlen*.48);ctx.closePath();
-  }
-  ctx.fillStyle=cfg.fc;ctx.fill();
+  // ═══════════════════════════════════════════════════════
+  // 依魚種繪製（特徵量化至最小辨識粒度）
+  // ═══════════════════════════════════════════════════════
 
-  // ── Body ──
-  ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle=cfg.bc;ctx.fill();
-  // Body shine
-  ctx.beginPath();ctx.ellipse(s*.15,-s*cfg.ratio*.3,s*.35,s*cfg.ratio*.22,-.3,0,Math.PI*2);
-  ctx.fillStyle='rgba(255,255,255,.18)';ctx.fill();
+  if(cfg.type==='bass'){
+    // ── 鱸魚：細長銀灰、黑點排列側線、雙背鰭、尖吻 ──
+    // 尾鰭（淺叉）
+    ctx.beginPath();ctx.moveTo(-s*.75,0);
+    ctx.lineTo(-s*1.55,-s*.45);ctx.lineTo(-s*.9,s*.06);
+    ctx.moveTo(-s*.75,0);ctx.lineTo(-s*1.55,s*.45);ctx.lineTo(-s*.9,-s*.06);
+    ctx.fillStyle=cfg.fc+'cc';ctx.fill();
+    // 軀體（細長）
+    ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);
+    ctx.fillStyle=cfg.bc;ctx.fill();
+    // 腹部較白
+    ctx.beginPath();ctx.ellipse(s*.1,s*cfg.ratio*.35,s*.7,s*cfg.ratio*.4,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,.28)';ctx.fill();
+    // 背部深色帶
+    ctx.beginPath();ctx.ellipse(-s*.1,-s*cfg.ratio*.2,s*.75,s*cfg.ratio*.3,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(60,80,120,.3)';ctx.fill();
+    // 前背鰭（棘刺型）
+    ctx.fillStyle='rgba(100,130,160,.9)';
+    ctx.beginPath();ctx.moveTo(s*.05,-s*cfg.ratio);
+    for(let i=0;i<5;i++){const bx=s*.05-i*s*.09;ctx.lineTo(bx,-s*cfg.ratio-(s*.55-i*s*.06));}
+    ctx.lineTo(s*.05-4*s*.09,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 後背鰭（軟條型）
+    ctx.fillStyle='rgba(140,170,200,.7)';
+    ctx.beginPath();ctx.moveTo(-s*.25,-s*cfg.ratio);ctx.quadraticCurveTo(-s*.5,-s*cfg.ratio*1.7,-s*.65,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 側線黑點（4顆）
+    ctx.fillStyle='rgba(20,30,60,.7)';
+    for(let i=0;i<4;i++){ctx.beginPath();ctx.arc(-s*.4+i*s*.22,0,s*.055,0,Math.PI*2);ctx.fill();}
+    // 鰓蓋線
+    ctx.strokeStyle='rgba(80,100,140,.5)';ctx.lineWidth=s*.06;
+    ctx.beginPath();ctx.arc(s*.5,0,s*.28,-Math.PI*.6,Math.PI*.6);ctx.stroke();
 
-  // ── Species-specific features ──
-  if(cfg.type==='tiger'){
-    // 花身鯻: spiky dorsal + black stripes
-    ctx.fillStyle=cfg.fc;
-    ctx.beginPath();ctx.moveTo(-s*.25,-s*cfg.ratio);ctx.lineTo(-s*.35,-s*cfg.ratio*1.75);
-    ctx.lineTo(-s*.1,-s*cfg.ratio*1.5);ctx.lineTo(s*.05,-s*cfg.ratio*1.8);
-    ctx.lineTo(s*.2,-s*cfg.ratio*1.4);ctx.lineTo(s*.3,-s*cfg.ratio);ctx.closePath();ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=s*.1;
-    for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(i*s*.28,-s*cfg.ratio*.9);ctx.lineTo(i*s*.25,s*cfg.ratio*.9);ctx.stroke();}
+  }else if(cfg.type==='tiger'){
+    // ── 花身鯻：亮黃體色＋4條水平黑橫紋＋棘刺背鰭 ──
+    // 尾鰭
+    ctx.beginPath();ctx.moveTo(-s*.72,0);ctx.lineTo(-s*1.42,-s*.38);ctx.lineTo(-s*1.42,s*.38);ctx.closePath();
+    ctx.fillStyle=cfg.fc;ctx.fill();
+    // 軀體（深高）
+    ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle=cfg.bc;ctx.fill();
+    // 4條黑橫紋（zebra）
+    ctx.strokeStyle='rgba(0,0,0,.55)';ctx.lineWidth=s*cfg.ratio*.25;
+    const stripes=[-s*.55,-s*.22,s*.12,s*.45];
+    for(const sx of stripes){
+      ctx.beginPath();ctx.moveTo(sx,-s*cfg.ratio*.92);ctx.lineTo(sx,s*cfg.ratio*.92);ctx.stroke();
+    }
+    // 棘刺背鰭（5支鰭棘）
+    ctx.strokeStyle='rgba(80,40,0,.8)';ctx.lineWidth=s*.07;
+    const spineBase=-s*cfg.ratio;
+    for(let i=0;i<5;i++){
+      const bx=-s*.2+i*s*.14;const by=spineBase-(s*.6-i*s*.07);
+      ctx.beginPath();ctx.moveTo(bx,spineBase);ctx.lineTo(by<spineBase-s*.1?by+s*.12:bx,by);ctx.stroke();
+    }
+    ctx.fillStyle='rgba(80,40,0,.3)';
+    ctx.beginPath();ctx.moveTo(-s*.2,spineBase);ctx.lineTo(-s*.4,spineBase-s*.6);
+    ctx.lineTo(s*.4,spineBase-s*.3);ctx.lineTo(s*.35,spineBase);ctx.closePath();ctx.fill();
+    // 腹鰭
+    ctx.fillStyle=cfg.fc+'99';
+    ctx.beginPath();ctx.moveTo(s*.0,s*cfg.ratio);ctx.lineTo(s*.05,s*cfg.ratio*1.6);ctx.lineTo(s*.3,s*cfg.ratio);ctx.closePath();ctx.fill();
+
+  }else if(cfg.type==='mullet'){
+    // ── 烏魚：魚雷型、深灰背/銀白腹、深叉尾、圓頭 ──
+    // 深叉尾（V字）
+    ctx.beginPath();ctx.moveTo(-s*.72,s*.05);ctx.lineTo(-s*1.7,-s*.6);ctx.lineTo(-s*1.15,-s*.02);
+    ctx.moveTo(-s*.72,-s*.05);ctx.lineTo(-s*1.7,s*.6);ctx.lineTo(-s*1.15,s*.02);
+    ctx.fillStyle='#303c50';ctx.fill();
+    // 軀體
+    ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle=cfg.bc;ctx.fill();
+    // 白腹（下半）
+    ctx.beginPath();ctx.ellipse(0,s*cfg.ratio*.2,s*.85,s*cfg.ratio*.55,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(220,230,240,.45)';ctx.fill();
+    // 深背帶
+    ctx.beginPath();ctx.ellipse(-s*.05,-s*cfg.ratio*.25,s*.8,s*cfg.ratio*.35,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(20,28,45,.4)';ctx.fill();
+    // 小第一背鰭
+    ctx.fillStyle='rgba(40,55,80,.8)';
+    ctx.beginPath();ctx.moveTo(s*.1,-s*cfg.ratio);ctx.lineTo(s*.0,-s*cfg.ratio*1.55);ctx.lineTo(-s*.18,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 第二背鰭（更後方）
+    ctx.beginPath();ctx.moveTo(-s*.35,-s*cfg.ratio);ctx.lineTo(-s*.45,-s*cfg.ratio*1.35);ctx.lineTo(-s*.62,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 脂肪銀光線
+    ctx.strokeStyle='rgba(180,210,240,.6)';ctx.lineWidth=s*.06;
+    ctx.beginPath();ctx.moveTo(-s*.6,s*cfg.ratio*.02);ctx.lineTo(s*.5,s*cfg.ratio*.02);ctx.stroke();
+
+  }else if(cfg.type==='milk'){
+    // ── 虱目魚：鏡面銀、超深叉尾、流線型 ──
+    // 超深叉尾（比烏魚更誇張的V）
+    ctx.beginPath();ctx.moveTo(-s*.7,s*.04);ctx.lineTo(-s*1.9,-s*.8);ctx.lineTo(-s*1.1,-s*.04);
+    ctx.moveTo(-s*.7,-s*.04);ctx.lineTo(-s*1.9,s*.8);ctx.lineTo(-s*1.1,s*.04);
+    ctx.fillStyle='rgba(140,190,230,.85)';ctx.fill();
+    // 軀體（最細長）
+    ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle=cfg.bc;ctx.fill();
+    // 鏡面光澤（兩道白光帶）
+    ctx.beginPath();ctx.ellipse(s*.05,-s*cfg.ratio*.28,s*.75,s*cfg.ratio*.18,-.15,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,.45)';ctx.fill();
+    ctx.beginPath();ctx.ellipse(-s*.15,s*cfg.ratio*.08,s*.55,s*cfg.ratio*.12,-.05,0,Math.PI*2);
+    ctx.fillStyle='rgba(200,230,255,.25)';ctx.fill();
+    // 背鰭（一片，靠後）
+    ctx.fillStyle='rgba(120,180,220,.7)';
+    ctx.beginPath();ctx.moveTo(-s*.1,-s*cfg.ratio);ctx.quadraticCurveTo(-s*.3,-s*cfg.ratio*1.8,-s*.55,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 側線明顯銀帶
+    ctx.strokeStyle='rgba(200,230,255,.8)';ctx.lineWidth=s*.07;
+    ctx.beginPath();ctx.moveTo(-s*.65,-s*cfg.ratio*.05);ctx.lineTo(s*.5,-s*cfg.ratio*.05);ctx.stroke();
+
   }else if(cfg.type==='tilapia'){
-    // 吳郭魚: long flowing dorsal fin
-    ctx.fillStyle=cfg.fc+'cc';
-    ctx.beginPath();ctx.moveTo(-s*.4,-s*cfg.ratio);ctx.quadraticCurveTo(-s*.1,-s*cfg.ratio*1.85,s*.35,-s*cfg.ratio);ctx.closePath();ctx.fill();
-    // Pelvic fin
-    ctx.beginPath();ctx.moveTo(-s*.1,s*cfg.ratio);ctx.lineTo(-s*.05,s*cfg.ratio*1.55);ctx.lineTo(s*.2,s*cfg.ratio);ctx.closePath();ctx.fill();
+    // ── 吳郭魚：橘褐深體、垂直暗橫紋、長背鰭 ──
+    // 尾鰭（扇形）
+    ctx.beginPath();ctx.moveTo(-s*.72,0);ctx.lineTo(-s*1.38,-s*.42);ctx.lineTo(-s*1.38,s*.42);ctx.closePath();
+    ctx.fillStyle=cfg.fc;ctx.fill();
+    // 軀體（最深最圓）
+    ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle=cfg.bc;ctx.fill();
+    // 5條垂直暗紋
+    ctx.strokeStyle='rgba(100,30,0,.5)';ctx.lineWidth=s*cfg.ratio*.22;
+    for(let i=-2;i<=2;i++){
+      const bx=i*s*.23;
+      ctx.beginPath();ctx.moveTo(bx,-s*cfg.ratio*.88);ctx.lineTo(bx,s*cfg.ratio*.88);ctx.stroke();
+    }
+    // 腹部橘光
+    ctx.beginPath();ctx.ellipse(s*.1,s*cfg.ratio*.3,s*.6,s*cfg.ratio*.4,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,150,50,.2)';ctx.fill();
+    // 長連續背鰭（棘條+軟條）
+    ctx.fillStyle='rgba(160,80,20,.75)';
+    ctx.beginPath();ctx.moveTo(-s*.5,-s*cfg.ratio);
+    ctx.lineTo(-s*.55,-s*cfg.ratio*1.8);ctx.lineTo(-s*.35,-s*cfg.ratio*1.95);
+    ctx.lineTo(-s*.05,-s*cfg.ratio*1.75);ctx.lineTo(s*.2,-s*cfg.ratio*1.55);
+    ctx.lineTo(s*.35,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 腹鰭
+    ctx.fillStyle=cfg.fc+'99';
+    ctx.beginPath();ctx.moveTo(s*.05,s*cfg.ratio);ctx.lineTo(s*.08,s*cfg.ratio*1.65);ctx.lineTo(s*.3,s*cfg.ratio);ctx.closePath();ctx.fill();
+
   }else if(cfg.type==='crucian'){
-    // 鯽魚: round high dorsal + golden shimmer
-    ctx.fillStyle=cfg.fc+'aa';
-    ctx.beginPath();ctx.moveTo(-s*.2,-s*cfg.ratio);ctx.quadraticCurveTo(s*.05,-s*cfg.ratio*1.65,s*.3,-s*cfg.ratio);ctx.closePath();ctx.fill();
-    // Scale dots
-    ctx.fillStyle='rgba(255,200,0,.2)';
-    for(let i=-1;i<=1;i++)for(let j=-1;j<=0;j++){ctx.beginPath();ctx.arc(i*s*.22,j*s*cfg.ratio*.45,s*.08,0,Math.PI*2);ctx.fill();}
+    // ── 鯽魚：金黃深背圓弧、小嘴向下、金鱗光澤 ──
+    // 尾鰭（微叉）
+    ctx.beginPath();ctx.moveTo(-s*.68,0);ctx.lineTo(-s*1.25,-s*.38);ctx.lineTo(-s*.88,0);
+    ctx.moveTo(-s*.68,0);ctx.lineTo(-s*1.25,s*.38);ctx.lineTo(-s*.88,0);
+    ctx.fillStyle='#c08010';ctx.fill();
+    // 軀體（最高最圓）
+    ctx.beginPath();ctx.ellipse(0,-s*cfg.ratio*.1,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle=cfg.bc;ctx.fill();
+    // 金鱗光澤（弧線群）
+    ctx.strokeStyle='rgba(200,140,0,.2)';ctx.lineWidth=s*.04;
+    for(let i=-2;i<=2;i++){
+      ctx.beginPath();ctx.arc(i*s*.25,0,s*.38,Math.PI*.15,Math.PI*.85);ctx.stroke();
+    }
+    // 背部橙紅高光
+    ctx.beginPath();ctx.ellipse(-s*.05,-s*cfg.ratio*.55,s*.7,s*cfg.ratio*.38,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,160,0,.18)';ctx.fill();
+    // 高拱背鰭（圓弧）
+    ctx.fillStyle='rgba(200,130,10,.8)';
+    ctx.beginPath();ctx.moveTo(-s*.2,-s*cfg.ratio);ctx.quadraticCurveTo(s*.02,-s*cfg.ratio*1.72,s*.28,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 小下嘴
+    ctx.fillStyle='rgba(160,100,20,.9)';
+    ctx.beginPath();ctx.arc(s*.7,s*cfg.ratio*.2,s*.08,0,Math.PI);ctx.fill();
+
+  }else if(cfg.type==='grass'){
+    // ── 草魚：橄欖綠、細長圓柱、大嘴、粗鱗列 ──
+    // 尾鰭（淺叉）
+    ctx.beginPath();ctx.moveTo(-s*.72,0);ctx.lineTo(-s*1.52,-s*.52);ctx.lineTo(-s*1.1,-s*.03);
+    ctx.moveTo(-s*.72,0);ctx.lineTo(-s*1.52,s*.52);ctx.lineTo(-s*1.1,s*.03);
+    ctx.fillStyle='#3a6818';ctx.fill();
+    // 軀體（細長圓柱）
+    ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle=cfg.bc;ctx.fill();
+    // 鱗片列（橫弧線 3 組）
+    ctx.strokeStyle='rgba(30,60,10,.18)';ctx.lineWidth=s*.045;
+    for(let i=-1;i<=1;i++){
+      ctx.beginPath();ctx.arc(i*s*.28,0,s*.42,Math.PI*.08,Math.PI*.92);ctx.stroke();
+      ctx.beginPath();ctx.arc(i*s*.28,0,s*.42,-Math.PI*.92,-Math.PI*.08);ctx.stroke();
+    }
+    // 橄欖綠背帶
+    ctx.beginPath();ctx.ellipse(-s*.05,-s*cfg.ratio*.32,s*.82,s*cfg.ratio*.38,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(30,60,10,.25)';ctx.fill();
+    // 背鰭（簡單三角）
+    ctx.fillStyle='rgba(50,90,20,.75)';
+    ctx.beginPath();ctx.moveTo(-s*.05,-s*cfg.ratio);ctx.quadraticCurveTo(-s*.25,-s*cfg.ratio*1.6,s*.2,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 大嘴（端位）
+    ctx.fillStyle='rgba(80,50,20,.85)';
+    ctx.beginPath();ctx.ellipse(s*.7,0,s*.12,s*.06,0,0,Math.PI*2);ctx.fill();
+
+  }else if(cfg.type==='small'){
+    // ── 三角仔：半透明、側線暗帶、超小型 ──
+    ctx.globalAlpha=.72;
+    // 尾鰭
+    ctx.beginPath();ctx.moveTo(-s*.7,0);ctx.lineTo(-s*1.38,-s*.35);ctx.lineTo(-s*1.38,s*.35);ctx.closePath();
+    ctx.fillStyle='rgba(100,200,240,.5)';ctx.fill();
+    // 軀體（半透明）
+    ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle='rgba(200,240,255,.55)';ctx.fill();
+    // 側線銀帶（最明顯特徵）
+    ctx.strokeStyle='rgba(100,180,220,.8)';ctx.lineWidth=s*.09;
+    ctx.beginPath();ctx.moveTo(-s*.65,0);ctx.lineTo(s*.5,0);ctx.stroke();
+    // 背暗帶
+    ctx.fillStyle='rgba(60,130,180,.3)';
+    ctx.beginPath();ctx.ellipse(-s*.05,-s*cfg.ratio*.4,s*.7,s*cfg.ratio*.3,0,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=.88;
+
   }else if(cfg.type==='catfish'){
-    // 土虱: whiskers + flat head
-    ctx.fillStyle=cfg.fc;
-    // Flat head extension
-    ctx.beginPath();ctx.ellipse(s*.6,-s*cfg.ratio*.05,s*.28,s*cfg.ratio*.6,0,0,Math.PI*2);ctx.fill();
-    // Whiskers (3 pairs)
-    ctx.strokeStyle='rgba(200,200,180,.8)';ctx.lineWidth=.9;
-    [[s*.7,-s*.08,s*1.25,-s*.28],[s*.7,s*.08,s*1.25,s*.28],[s*.68,0,s*1.2,0]].forEach(([x1,y1,x2,y2])=>{
+    // ── 土虱：深黑扁頭、4對鬍鬚、脂鰭、無鱗 ──
+    ctx.globalAlpha=.95;
+    // 尾鰭（扁形）
+    ctx.beginPath();ctx.moveTo(-s*.7,0);ctx.lineTo(-s*1.3,-s*.35);ctx.lineTo(-s*1.3,s*.35);ctx.closePath();
+    ctx.fillStyle='#181828';ctx.fill();
+    // 軀體（深黑、扁頭大）
+    ctx.beginPath();ctx.ellipse(0,0,s,s*cfg.ratio,0,0,Math.PI*2);ctx.fillStyle=cfg.bc;ctx.fill();
+    // 扁平頭部（覆蓋前端）
+    ctx.beginPath();ctx.ellipse(s*.58,0,s*.3,s*cfg.ratio*.78,0,0,Math.PI*2);ctx.fillStyle='#282838';ctx.fill();
+    // 上嘴鬚（2對，向前延伸）
+    ctx.strokeStyle='rgba(180,180,160,.75)';ctx.lineWidth=.8;
+    [[s*.76,-s*.1,s*1.4,-s*.32],[s*.76,s*.1,s*1.4,s*.32]].forEach(([x1,y1,x2,y2])=>{
       ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
     });
-    // Dorsal spike
-    ctx.fillStyle=cfg.bc;
-    ctx.beginPath();ctx.moveTo(-s*.2,-s*cfg.ratio);ctx.lineTo(-s*.15,-s*cfg.ratio*1.6);ctx.lineTo(s*.05,-s*cfg.ratio);ctx.closePath();ctx.fill();
-  }else if(cfg.type==='bass'){
-    // 鱸魚: silver lateral stripe + smooth dorsal
-    ctx.fillStyle=cfg.fc+'99';
-    ctx.beginPath();ctx.moveTo(-s*.3,-s*cfg.ratio);ctx.quadraticCurveTo(s*.0,-s*cfg.ratio*1.55,s*.35,-s*cfg.ratio);ctx.closePath();ctx.fill();
-    ctx.strokeStyle='rgba(60,100,160,.5)';ctx.lineWidth=s*.07;
-    ctx.beginPath();ctx.moveTo(-s*.55,s*cfg.ratio*.05);ctx.lineTo(s*.5,s*cfg.ratio*.05);ctx.stroke();
-  }else if(cfg.type==='mullet'){
-    // 烏魚: streamlined, small dorsal
-    ctx.fillStyle=cfg.fc+'99';
-    ctx.beginPath();ctx.moveTo(-s*.15,-s*cfg.ratio);ctx.quadraticCurveTo(s*.1,-s*cfg.ratio*1.45,s*.4,-s*cfg.ratio);ctx.closePath();ctx.fill();
-  }else if(cfg.type==='milk'){
-    // 虱目魚: mirror silver + large forked tail already drawn
-    ctx.strokeStyle='rgba(160,200,240,.5)';ctx.lineWidth=s*.05;
-    ctx.beginPath();ctx.moveTo(-s*.5,0);ctx.lineTo(s*.4,0);ctx.stroke();
-  }else if(cfg.type==='grass'){
-    // 草魚: olive green + simple dorsal
-    ctx.fillStyle=cfg.fc+'99';
-    ctx.beginPath();ctx.moveTo(-s*.1,-s*cfg.ratio);ctx.quadraticCurveTo(s*.1,-s*cfg.ratio*1.5,s*.35,-s*cfg.ratio);ctx.closePath();ctx.fill();
-    // Scale pattern
-    ctx.strokeStyle='rgba(0,0,0,.1)';ctx.lineWidth=.6;
-    for(let i=-1;i<=1;i++){ctx.beginPath();ctx.arc(i*s*.25,0,s*.32,Math.PI*.1,Math.PI*.9);ctx.stroke();}
-  }else{
-    // 三角仔: tiny translucent baitfish
-    ctx.fillStyle='rgba(160,240,255,.4)';
-    ctx.beginPath();ctx.moveTo(-s*.1,-s*cfg.ratio);ctx.quadraticCurveTo(s*.05,-s*cfg.ratio*1.4,s*.2,-s*cfg.ratio);ctx.closePath();ctx.fill();
-    ctx.globalAlpha=.55;
+    // 下顎鬚（1對，向前下）
+    [[s*.72,-s*.03,s*1.3,-s*.12],[s*.72,s*.03,s*1.3,s*.12]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+    });
+    // 背棘鰭（硬棘）
+    ctx.fillStyle='rgba(60,60,90,.85)';
+    ctx.beginPath();ctx.moveTo(s*.1,-s*cfg.ratio);ctx.lineTo(s*.05,-s*cfg.ratio*1.65);ctx.lineTo(-s*.15,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 脂鰭（背部後方小鰭，土虱特有）
+    ctx.beginPath();ctx.moveTo(-s*.35,-s*cfg.ratio);ctx.lineTo(-s*.4,-s*cfg.ratio*1.28);ctx.lineTo(-s*.55,-s*cfg.ratio);ctx.closePath();ctx.fill();
+    // 隱約皮膚紋理（無鱗魚紋）
+    ctx.strokeStyle='rgba(60,60,90,.2)';ctx.lineWidth=s*.04;
+    for(let i=0;i<3;i++){
+      ctx.beginPath();ctx.moveTo(-s*.5+i*s*.3,-s*cfg.ratio*.7);ctx.lineTo(-s*.5+i*s*.3,s*cfg.ratio*.7);ctx.stroke();
+    }
   }
 
-  // ── Eye ──
+  // ── 眼睛（共用，位置依魚種微調）──
   ctx.globalAlpha=1;
-  const eyeX=s*.48,eyeY=-s*cfg.ratio*.2;
-  ctx.beginPath();ctx.arc(eyeX,eyeY,s*.13,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.85)';ctx.fill();
-  ctx.beginPath();ctx.arc(eyeX+s*.04,eyeY-s*.05,s*.045,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  const eyeOffY=cfg.type==='crucian'?-s*cfg.ratio*.25:cfg.type==='catfish'?-s*cfg.ratio*.1:-s*cfg.ratio*.18;
+  const eyeR=cfg.type==='small'?s*.11:s*.14;
+  const eyeX=cfg.type==='catfish'?s*.52:s*.50;
+  ctx.beginPath();ctx.arc(eyeX,eyeOffY,eyeR,0,Math.PI*2);ctx.fillStyle='rgba(5,5,15,.9)';ctx.fill();
+  ctx.beginPath();ctx.arc(eyeX+eyeR*.28,eyeOffY-eyeR*.3,eyeR*.38,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.85)';ctx.fill();
   ctx.restore();
 }
 let lastT=0;
@@ -1334,11 +1537,102 @@ function animFrame(ts){
     const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#001830');bg.addColorStop(1,'#002545');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
     ctx.globalAlpha=.06;for(let i=0;i<2;i++){ctx.beginPath();ctx.moveTo(0,5+i*20+Math.sin(ts/1200+i)*2);ctx.lineTo(W,5+i*20+Math.cos(ts/1000+i)*2);ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();}ctx.globalAlpha=1;
     for(const b of bubs){b.y+=b.vy;if(b.y<0)b.y=H;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.strokeStyle=`rgba(150,220,255,${b.a})`;ctx.lineWidth=.7;ctx.stroke();}
-    for(const f of fish){const s=dt/16;f.x+=f.vx*s;f.wb+=f.wbs*s;if(f.vx>0&&f.x>W+20)f.x=-20;if(f.vx<0&&f.x<-20)f.x=W+20;drawQFish(ctx,f);}
+    for(const f of fish){
+      const s=dt/16;
+      f.x+=f.vx*s;f.wb+=f.wbs*s;
+      // 水層漂移（底棲魚慢速上下游動，掠食魚偶爾俯衝）
+      const cfg=SPECIES_CFG[f.species]||SPECIES_CFG['鱸魚'];
+      if(cfg.zone==='bot'){f.y+=f.vySgn*0.12*s;if(f.y>f.yMax){f.vySgn=-1;}if(f.y<f.yMin){f.vySgn=1;}}
+      else{f.y=f.yMin+(f.yMax-f.yMin)*(0.5+0.4*Math.sin(f.wb*0.3));} // 正弦波動
+      if(f.vx>0&&f.x>W+20)f.x=-20;
+      if(f.vx<0&&f.x<-20)f.x=W+20;
+      drawQFish(ctx,f);
+    }
   }
   rafId=requestAnimationFrame(animFrame);
 }
 function startAnim(){if(rafId)cancelAnimationFrame(rafId);lastT=performance.now();rafId=requestAnimationFrame(animFrame);}
+
+// ── 今日黃金時期計算 ────────────────────────────────────────────────────────
+// 掃描每個乾潮/滿潮事件，計算在池時間後的三/七分水黃金視窗
+// 規則：
+//   乾潮後 90–120 min → 漲三分水（⬆️進三）
+//   乾潮後 240–270 min → 漲七分水（⬆️進七）
+//   滿潮後 90–120 min → 退三分水（⬇️退三）
+//   滿潮後 240–270 min → 退七分水（⬇️退七）
+const GOLDEN_CFG={
+  rising_sanfen:{label:'漲三分水',dir:'⬆️',sub:'進三 · 進流激增',col:'#00d4ff',grade:'A',rank:2},
+  rising_qifen: {label:'漲七分水',dir:'⬆️',sub:'進七 · 漲流頂峰',col:'#00ff88',grade:'S',rank:1},
+  sanfen:       {label:'退三分水',dir:'⬇️',sub:'退三 · 退流激增',col:'#00d4ff',grade:'A',rank:2},
+  qifen:        {label:'退七分水',dir:'⬇️',sub:'退七 · 退流頂峰',col:'#00ff88',grade:'S',rank:1},
+};
+function calcGoldenPeriods(events,delay){
+  const now=new Date();
+  const todayStr=fmtDate(now);
+  const periods=[];
+  const delayMs=delay*3600000;
+  for(const evt of events){
+    const poolEvt=new Date(evt.dt.getTime()+delayMs);
+    const isRising=evt.type==='乾潮';
+    // 三分水：90–120 分
+    const s3=new Date(poolEvt.getTime()+90*60000);
+    const e3=new Date(poolEvt.getTime()+120*60000);
+    // 七分水：240–270 分
+    const s7=new Date(poolEvt.getTime()+240*60000);
+    const e7=new Date(poolEvt.getTime()+270*60000);
+    // 只保留今天的視窗（窗口至少有一端落在今天）
+    const inToday=w=>fmtDate(w)===todayStr;
+    if(inToday(s3)||inToday(e3)){
+      const key=isRising?'rising_sanfen':'sanfen';
+      periods.push({key,start:s3,end:e3,baseEvt:evt,...GOLDEN_CFG[key]});
+    }
+    if(inToday(s7)||inToday(e7)){
+      const key=isRising?'rising_qifen':'qifen';
+      periods.push({key,start:s7,end:e7,baseEvt:evt,...GOLDEN_CFG[key]});
+    }
+  }
+  return periods.sort((a,b)=>a.start-b.start);
+}
+
+// ── 渲染黃金時期時間軸（顯示在潮汐卡底部）────────────────────────────────
+function renderGoldenTimeline(events,delay){
+  const el=document.getElementById('goldenTimeline');if(!el)return;
+  const now=new Date();
+  const periods=calcGoldenPeriods(events,delay);
+  if(!periods.length){el.innerHTML='<div style="font-size:10px;color:var(--t2)">今日無明顯黃金時期資料</div>';return;}
+  const fmtT=d=>d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false});
+  let html=`<div class="gold-title">🏆 今日黃金時期（漲七退三時刻表）</div>`;
+  for(const p of periods){
+    const isPast=p.end<now;
+    const isNow=now>=p.start&&now<=p.end;
+    const isUpcoming=p.start>now;
+    let stateTag='',rowCls='gold-row';
+    if(isNow){stateTag=`<span class="gold-state now-state">👉 進行中</span>`;rowCls+=' gold-row-now';}
+    else if(isPast){stateTag=`<span class="gold-state past-state">已過</span>`;rowCls+=' gold-row-past';}
+    else{
+      const minLeft=Math.round((p.start-now)/60000);
+      const timeLeft=fmtDur(minLeft);
+      stateTag=`<span class="gold-state up-state">⏳ ${timeLeft}後</span>`;
+    }
+    html+=`<div class="${rowCls}">
+      <div class="gold-dir" style="color:${isPast?'var(--t2)':p.col}">${p.dir}</div>
+      <div class="gold-info">
+        <div class="gold-lbl" style="color:${isPast?'var(--t2)':p.col}">${p.label}</div>
+        <div class="gold-sub">${p.sub}</div>
+      </div>
+      <div class="gold-time" style="color:${isPast?'var(--t2)':'var(--t)'}">
+        ${fmtT(p.start)}–${fmtT(p.end)}
+      </div>
+      <div class="gold-grade" style="background:${isPast?'rgba(80,90,110,.15)':'rgba('+hexToRgb(p.col)+',.12)'};border-color:${isPast?'var(--bd)':p.col};color:${isPast?'var(--t2)':p.col}">${p.grade}</div>
+      ${stateTag}
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+function hexToRgb(hex){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return`${r},${g},${b}`;
+}
 
 // ── 7-DAY MINI SCORE ──────────────────────────────────────────────────────
 function renderWeekMini(events,delay){
@@ -1381,6 +1675,7 @@ function recalc(){
   document.getElementById('tagsEl').innerHTML=r.tags.map(t=>`<div class="tag ${t.c}">${t.t}</div>`).join('')||'<div class="tag info">分析完成</div>';
   renderWeekMini(tideEvents,delay);
   renderTide(tideEvents,r.ph,delay);
+  renderGoldenTimeline(tideEvents,delay);
   renderWx(wx);
   renderDepthSchedule(tideEvents,delay,r.pkey);
   renderFish(r.fish,r.pkey,hr,temp);
@@ -1391,7 +1686,7 @@ function recalc(){
 // ── RENDER FISH (with activity % bars) ───────────────────────────────────
 function renderFish(fishList,pkey,hr,temp){
   const el=document.getElementById('fishDetail');
-  const phaseLabel={sanfen:'三分水活水激增',qifen:'七分水頂流',slack:'停潮緩流',flowing:'流水期',unknown:'流水期'};
+  const phaseLabel={sanfen:'退三分水',qifen:'退七分水',rising_sanfen:'漲三分水',rising_qifen:'漲七分水',slack:'停潮緩流',flowing:'流水期',unknown:'流水期'};
   const subtitle=phaseLabel[pkey]||'流水期';
   let html=`<div style="font-size:10px;color:var(--t2);margin-bottom:8px">目前潮相：<span style="color:var(--c)">${subtitle}</span>，推薦魚種如下</div>`;
   fishList.slice(0,4).forEach((name,i)=>{
@@ -1443,10 +1738,12 @@ function renderTide(events,ph,delay){
   let txt='',col='var(--t2)';
   if(ph&&ph.phase!=='unknown'){
     const m={
-      slack:['⚓ 停潮（死水期）','var(--r)'],
-      sanfen:['💧 三分水（活水激增）','var(--g)'],
-      qifen:['🌊 七分水（頂流時刻）','var(--c)'],
-      flowing:['➡️ 流水中','#5a6e99']
+      slack:        ['⚓ 停潮（死水期）',      'var(--r)'],
+      sanfen:       ['⬇️ 退三分水（退流激增）','var(--g)'],
+      qifen:        ['⬇️ 退七分水（頂退流）',  'var(--c)'],
+      rising_sanfen:['⬆️ 漲三分水（進流激增）','#00d4ff'],
+      rising_qifen: ['⬆️ 漲七分水（頂漲流）',  '#00ff88'],
+      flowing:      ['➡️ 流水中',             '#5a6e99']
     };
     [txt,col]=m[ph.phase]||['➡️ 流水中','#5a6e99'];
     if(ph.minSince!=null)txt+=`（${ph.prev.type}後 ${fmtDur(ph.minSince)}）`;
@@ -1475,6 +1772,33 @@ function renderTide(events,ph,delay){
     return `<div class="tch ${hi?'hi':'lo'} ${past?'past':''}">${hi?'🌊':'↓'} ${e.type} ${adj.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:true})} ${e.height>0?'+':''}${e.height}cm</div>`;
   }).join('');
   document.getElementById('tideChips').innerHTML=chips||'<span style="color:var(--t2);font-size:11px;">今日無資料</span>';
+}
+
+// ── 潮相定義圖例（漲七退三科普卡）────────────────────────────────────────
+// 物理機制：潮汐半週期 ≈ 6.2 h，三/七分水點為最大流速時刻
+// 三分水 ≈ 轉潮後 1.5 h（加速段），七分水 ≈ 轉潮後 4 h（頂峰段）
+function renderPhaseLegend(){
+  const el=document.getElementById('phaseLegend');if(!el)return;
+  const items=[
+    {dir:'⬆️',key:'漲三分水',sub:'乾潮後 90–120 分',col:'#00aaff',bg:'rgba(0,170,255,.08)',
+     body:'漲流開始激增，浮游生物隨水流輸入，掠食魚追流開口。流速約 10–20 cm/s，rheotaxis 觸發閾。'},
+    {dir:'⬆️',key:'漲七分水',sub:'乾潮後 240–270 分',col:'#00ff88',bg:'rgba(0,255,136,.08)',
+     body:'漲流頂峰，DO 濃度升至日高點（光合＋水流換氣），大型魚逆流高速巡游，最易咬大活餌。'},
+    {dir:'⬇️',key:'退三分水',sub:'滿潮後 90–120 分',col:'#00aaff',bg:'rgba(0,170,255,.08)',
+     body:'退流開始激增，水中浮游生物被衝至池中，掠食魚趁亂追食。與漲三分水合稱「進場時機」。'},
+    {dir:'⬇️',key:'退七分水',sub:'滿潮後 240–270 分',col:'#00ff88',bg:'rgba(0,255,136,.08)',
+     body:'退流頂峰，底棲魚貼底流動最活躍，大型鱸魚/花身鯻衝刺突擊。為四個黃金窗口中咬況最強。'},
+  ];
+  const cells=items.map(it=>`
+    <div class="plg-item" style="background:${it.bg};border-color:${it.col}44">
+      <div class="plg-head" style="color:${it.col}">${it.dir} ${it.key}</div>
+      <div class="plg-time" style="color:${it.col}cc">⏱ ${it.sub}</div>
+      <div class="plg-body">${it.body}</div>
+    </div>`).join('');
+  el.innerHTML=`<div class="phase-leg">
+    <div class="phase-leg-title">📖 黃金時期機制定義</div>
+    <div class="phase-leg-grid">${cells}</div>
+  </div>`;
 }
 
 // ── DRAW TIDE CANVAS ──────────────────────────────────────────────────────
