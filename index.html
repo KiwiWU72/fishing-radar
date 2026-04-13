@@ -182,6 +182,19 @@ select.sel:focus{border-color:var(--c)}
 .wx-bot-cell{background:rgba(0,0,0,.2);border-radius:7px;padding:8px 10px;font-size:11px}
 .wx-bot-lbl{font-size:9px;color:var(--t2);margin-bottom:3px}
 .wx-bot-val{font-size:13px;font-weight:700;color:var(--t)}
+/* Wx current extra */
+.wx-top-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.wx-pop-wrap{display:flex;align-items:center;gap:5px;flex:1;min-width:100px}
+.wx-pop-track{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.wx-pop-fill{height:100%;border-radius:99px;transition:width .8s}
+.wx-sub{font-size:9px;color:var(--t2);margin-top:2px}
+.wx-sun-row{display:flex;align-items:center;gap:4px;padding:7px 0 4px;border-top:1px solid var(--bd);margin-top:6px}
+.wx-sun-item{display:flex;align-items:center;gap:4px;white-space:nowrap}
+.wx-sun-icon{font-size:16px;line-height:1}
+.wx-sun-time{font-size:12px;font-weight:800;color:var(--y);font-variant-numeric:tabular-nums}
+.wx-score-row{display:flex;align-items:center;gap:7px;padding:5px 0 2px}
+.wx-score-track{flex:1;height:7px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}
+.wx-score-fill{height:100%;border-radius:99px;transition:width 1s}
 /* Weekly wx strip */
 .wx-week{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:6px}
 .wx-day{background:rgba(0,0,0,.25);border-radius:7px;padding:6px 4px;text-align:center;border:1px solid var(--bd)}
@@ -1676,6 +1689,7 @@ function recalc(){
   renderWeekMini(tideEvents,delay);
   renderTide(tideEvents,r.ph,delay);
   renderGoldenTimeline(tideEvents,delay);
+  renderPhaseLegend();
   renderWx(wx);
   renderDepthSchedule(tideEvents,delay,r.pkey);
   renderFish(r.fish,r.pkey,hr,temp);
@@ -1838,41 +1852,140 @@ function drawMainTide(events,delay){
   for(let dh=-4;dh<=8;dh+=2){const t=new Date(now.getTime()+dh*3600000),x=((t-winS)/(winE-winS))*W;if(x>=0&&x<=W)ctx.fillText(t.getHours()+':00',x-8,H-1);}
 }
 
+// ── 日出/日落計算（佳冬鄉 22.43°N, 120.63°E）────────────────────────────
+// 演算法：NOAA 簡化太陽方程式，精度 ±1 分鐘
+const JD_LAT=22.43,JD_LON=120.63;
+function getSunTimes(date){
+  const doy=Math.floor((date-new Date(date.getFullYear(),0,0))/86400000);
+  const g=2*Math.PI/365*(doy-1+0.5);
+  const eqt=229.18*(0.000075+0.001868*Math.cos(g)-0.032077*Math.sin(g)
+    -0.014615*Math.cos(2*g)-0.04089*Math.sin(2*g));
+  const decl=0.006918-0.399912*Math.cos(g)+0.070257*Math.sin(g)
+    -0.006758*Math.cos(2*g)+0.000907*Math.sin(2*g)
+    -0.002697*Math.cos(3*g)+0.00148*Math.sin(3*g);
+  const latR=JD_LAT*Math.PI/180;
+  const cosHa=(Math.cos(90.833*Math.PI/180)-Math.sin(latR)*Math.sin(decl))
+    /(Math.cos(latR)*Math.cos(decl));
+  if(Math.abs(cosHa)>1)return{sunrise:'--',sunset:'--',dayMin:0};
+  const haDeg=Math.acos(cosHa)*180/Math.PI;
+  const toT=m=>{const t=m+480;const h=Math.floor(t/60)%24,mm=Math.round(t%60);
+    return String(h).padStart(2,'0')+':'+String(mm).padStart(2,'0');};
+  const sunriseMin=720-4*(JD_LON+haDeg)-eqt;
+  const sunsetMin =720-4*(JD_LON-haDeg)-eqt;
+  return{sunrise:toT(sunriseMin),sunset:toT(sunsetMin),dayMin:Math.round(sunsetMin-sunriseMin)};
+}
+
+// ── 體感溫度（Australian AT 公式，±1°C）────────────────────────────────
+// AT = T + 0.33×e − 0.70×ws − 4.00；e = rh/100 × 6.105 × exp(17.27T/(237.7+T))
+function feelsLike(temp,rh,ws){
+  const e=(rh/100)*6.105*Math.exp(17.27*temp/(237.7+temp));
+  const at=temp+0.33*e-0.70*(ws||0)-4.0;
+  return Math.round(at*10)/10;
+}
+
+// ── 釣魚天氣評分（天氣面向，0–100）──────────────────────────────────────
+function calcWxFishScore(temp,rh,windSpd,pop){
+  let s=55;
+  // 水溫 Q10 效應最適帶 20–28°C
+  if(temp>=20&&temp<=28)s+=15;
+  else if(temp>28&&temp<=32)s+=5;
+  else if(temp>32)s-=12;
+  else if(temp<18)s-=10;
+  // 風速（高風阻礙投竿感知，Bft≥4 顯著影響）
+  const bft=bf(windSpd||0);
+  if(bft<=2)s+=10;else if(bft===3)s+=4;else if(bft===4)s-=8;else s-=18;
+  // 降雨機率（雨天魚口好但作釣困難）
+  if(pop<20)s+=8;else if(pop<40)s+=3;else if(pop>70)s-=12;
+  // 濕度舒適帶 55–80%
+  if(rh>=55&&rh<=80)s+=5;else if(rh>85)s-=5;
+  return Math.max(0,Math.min(100,Math.round(s)));
+}
+
 // ── RENDER WEATHER (current + weekly) ────────────────────────────────────
 function renderWx(wx){
   const el=document.getElementById('wxPanel');
   const weeklyDays=parseWeeklyWeather();
+  const sun=getSunTimes(new Date());
 
-  // Current conditions block — only render cells that have real data
+  // ── 今日即時天氣區塊 ──
   let curHtml='';
   if(!wx){
     curHtml=`<div style="color:var(--t2);font-size:11px;padding:8px 0">按右上角 ⚙️ 輸入 API Key 以載入即時天氣</div>`;
   }else{
-    const tc=wx.temp>32?'#ff3c3c':wx.temp>28?'#ff8c00':wx.temp>=20?'#00ff88':'#00d4ff';
-    const hc=wx.rh>85?'#ff8c00':wx.rh>=60?'#00ff88':'#00d4ff';
-    // Wind cell — only if data available
-    const windCell=wx.hasWind?(()=>{
-      const bft=bf(wx.windSpd);
-      const wc=bft>=5?'#ff3c3c':bft>=4?'#ffd700':bft>=3?'#00d4ff':'#7a99bb';
-      return `<div class="wx-cell"><div class="wx-lbl">風速</div><div class="wx-val" style="color:${wc}">${bft}<span class="wx-unit"> 級${bft>0?' ('+wx.windSpd.toFixed(1)+'m/s)':''}</span></div></div>`;
-    })():'';
-    // How many columns: 3 if wind present, 2 if not
-    const gridCols=wx.hasWind?'repeat(3,1fr)':'repeat(2,1fr)';
-    // Bottom row cells — only if data present
-    const weatherCell=wx.hasWeather?`<div class="wx-bot-cell"><div class="wx-bot-lbl">天氣現象</div><div class="wx-bot-val">${wx.weather}${wx.pop>0?` <span style="color:#7aa0cc;font-size:10px;">☔${wx.pop}%</span>`:''}</div></div>`:'';
-    const windDirCell=(wx.hasWind&&wx.windDir)?`<div class="wx-bot-cell"><div class="wx-bot-lbl">風向</div><div class="wx-bot-val">${wx.windDir||'<span style="color:var(--t2)">--</span>'}</div></div>`:'';
-    const hasBotRow=wx.hasWeather||(wx.hasWind&&wx.windDir);
-    curHtml=`
-    <div class="wx-grid" style="grid-template-columns:${gridCols}">
-      <div class="wx-cell"><div class="wx-lbl">溫度</div><div class="wx-val" style="color:${tc}">${wx.temp}<span class="wx-unit">°C</span></div></div>
+    const temp=wx.temp,rh=wx.rh,windSpd=wx.windSpd||0,pop=wx.pop||0;
+    const fl=feelsLike(temp,rh,windSpd);
+    const bft=bf(windSpd);
+    const wxScore=calcWxFishScore(temp,rh,windSpd,pop);
+    const wxScoreCol=wxScore>=70?'#00ff88':wxScore>=50?'#ffd700':wxScore>=35?'#ff8c00':'#ff3c3c';
+
+    // 顏色
+    const tc=temp>32?'#ff3c3c':temp>28?'#ff8c00':temp>=20?'#00ff88':'#00d4ff';
+    const flc=fl>34?'#ff3c3c':fl>30?'#ff8c00':fl>=20?'#ffd700':'#00d4ff';
+    const wc=bft>=5?'#ff3c3c':bft>=4?'#ffd700':bft>=3?'#00d4ff':'#7a99bb';
+    const hc=rh>85?'#ff8c00':rh>=55?'#00ff88':'#00d4ff';
+
+    // ── 第一行：天氣現象（若有）+ 降雨機率條 ──
+    const wxTopRow=wx.hasWeather?`
+    <div class="wx-top-row">
+      <span style="font-size:12px;font-weight:700;color:var(--t)">${wx.weather}</span>
+      ${pop>0?`<div class="wx-pop-wrap">
+        <span style="font-size:9px;color:#7aa0cc">☔ 降雨</span>
+        <div class="wx-pop-track"><div class="wx-pop-fill" style="width:${pop}%;background:${pop>70?'#ff3c3c':pop>40?'#ff8c00':'#5588cc'}"></div></div>
+        <span style="font-size:10px;font-weight:900;color:${pop>70?'#ff3c3c':pop>40?'#ff8c00':'#7aa0cc'}">${pop}%</span>
+      </div>`:'<span style="font-size:9px;color:#00ff88">☀️ 無降雨</span>'}
+    </div>`:'';
+
+    // ── 第二行：核心數字 3–4 欄 ──
+    const windCell=wx.hasWind?`<div class="wx-cell">
+      <div class="wx-lbl">💨 風速</div>
+      <div class="wx-val" style="color:${wc}">${bft}<span class="wx-unit"> 級</span></div>
+      <div class="wx-sub">${windSpd.toFixed(1)} m/s${wx.windDir?' · '+wx.windDir:''}</div>
+    </div>`:'';
+
+    const cols=wx.hasWind?'repeat(4,1fr)':'repeat(3,1fr)';
+    const mainGrid=`<div class="wx-grid" style="grid-template-columns:${cols}">
+      <div class="wx-cell">
+        <div class="wx-lbl">🌡️ 溫度</div>
+        <div class="wx-val" style="color:${tc}">${temp}<span class="wx-unit">°C</span></div>
+        <div class="wx-sub" style="color:${flc}">體感 ${fl}°C</div>
+      </div>
       ${windCell}
-      <div class="wx-cell"><div class="wx-lbl">相對濕度</div><div class="wx-val" style="color:${hc}">${wx.rh}<span class="wx-unit">%</span></div></div>
-    </div>
-    ${hasBotRow?`<div class="wx-bot" style="grid-template-columns:${weatherCell&&windDirCell?'1fr 1fr':weatherCell?'1fr':'1fr'}">${weatherCell}${windDirCell}</div>`:''}
-    `;
+      <div class="wx-cell">
+        <div class="wx-lbl">💧 濕度</div>
+        <div class="wx-val" style="color:${hc}">${rh}<span class="wx-unit">%</span></div>
+        <div class="wx-sub">${rh>85?'悶熱':rh>=55?'舒適':'偏乾'}</div>
+      </div>
+      <div class="wx-cell">
+        <div class="wx-lbl">🌂 降雨率</div>
+        <div class="wx-val" style="color:${pop>70?'#ff3c3c':pop>40?'#ff8c00':'#5588aa'}">${pop}<span class="wx-unit">%</span></div>
+        <div class="wx-sub">${pop>70?'大雨可能':pop>40?'有雨':pop>0?'偶有雨':'無雨'}</div>
+      </div>
+    </div>`;
+
+    // ── 日出日落列 ──
+    const dayH=Math.floor(sun.dayMin/60),dayM=sun.dayMin%60;
+    const sunRow=`<div class="wx-sun-row">
+      <div class="wx-sun-item"><span class="wx-sun-icon">🌅</span><div><div style="font-size:9px;color:var(--t2)">日出</div><div class="wx-sun-time">${sun.sunrise}</div></div></div>
+      <div style="flex:1;height:3px;margin:0 6px;background:linear-gradient(90deg,#ff8c00,#ffd700,#ff8c00);border-radius:99px;align-self:center;opacity:.5"></div>
+      <div style="font-size:9px;color:var(--t2);white-space:nowrap">日照 ${dayH}h${dayM>0?dayM+'m':''}</div>
+      <div style="flex:1;height:3px;margin:0 6px;background:linear-gradient(90deg,#ff8c00,#ffd700,#ff8c00);border-radius:99px;align-self:center;opacity:.5"></div>
+      <div class="wx-sun-item"><span class="wx-sun-icon">🌆</span><div><div style="font-size:9px;color:var(--t2)">日落</div><div class="wx-sun-time">${sun.sunset}</div></div></div>
+    </div>`;
+
+    // ── 釣魚天氣評分 ──
+    const scoreRow=`<div class="wx-score-row">
+      <span style="font-size:9px;color:var(--t2);white-space:nowrap">🎣 釣魚天氣</span>
+      <div class="wx-score-track">
+        <div class="wx-score-fill" style="width:${wxScore}%;background:linear-gradient(90deg,rgba(0,80,40,.6),${wxScoreCol})"></div>
+      </div>
+      <span style="font-size:11px;font-weight:900;color:${wxScoreCol};min-width:30px;text-align:right">${wxScore}</span>
+      <span style="font-size:9px;color:${wxScoreCol}">${wxScore>=70?'優良':wxScore>=50?'普通':wxScore>=35?'較差':'不宜'}</span>
+    </div>`;
+
+    curHtml=wxTopRow+mainGrid+sunRow+scoreRow;
   }
 
-  // Weekly forecast block
+  // ── 一週預報 ──
   let weekHtml='';
   if(weeklyDays&&weeklyDays.length){
     const dayNames=['日','一','二','三','四','五','六'];
@@ -1883,17 +1996,21 @@ function renderWx(wx){
       const dt=new Date(d.dayStr+'T12:00:00+08:00');
       const dn=dayNames[dt.getDay()];
       const mm=(dt.getMonth()+1).toString().padStart(2,'0'),dd=dt.getDate().toString().padStart(2,'0');
+      // 每日釣魚天氣評分（用日均溫和降雨率估算）
+      const dScore=d.avg!=null?calcWxFishScore(d.avg,d.rh||72,d.ws||1,d.pop||0):null;
+      const dScoreCol=dScore!=null?(dScore>=70?'#00ff88':dScore>=50?'#ffd700':dScore>=35?'#ff8c00':'#ff3c3c'):null;
       return `<div class="wx-day${isToday?' wx-today':''}">
         <div class="wx-day-name">週${dn}<br><span style="font-size:8px">${mm}/${dd}</span></div>
         <div class="wx-day-icon">${icon}</div>
         <div class="wx-day-hi">${d.hi!=null?d.hi+'°':'--'}</div>
         <div class="wx-day-lo">${d.lo!=null?d.lo+'°':'--'}</div>
-        ${d.pop?`<div class="wx-day-pop">☔${d.pop}%</div>`:''}
-        ${d.uvi!=null?`<div class="wx-day-uv">UV${d.uvi}</div>`:''}
+        ${d.pop!=null?`<div class="wx-day-pop">☔${d.pop}%</div>`:''}
+        ${d.uvi!=null?`<div class="wx-day-uv">UV ${d.uvi}</div>`:''}
+        ${dScore!=null?`<div style="font-size:9px;font-weight:900;color:${dScoreCol};margin-top:2px">${dScore}分</div>`:''}
       </div>`;
     }).join('');
     weekHtml=`<div class="wx-sep"></div>
-      <div style="font-size:9px;color:var(--t2);letter-spacing:1px;margin-bottom:5px">📅 佳冬鄉一週預報</div>
+      <div style="font-size:9px;color:var(--t2);letter-spacing:1px;margin-bottom:5px">📅 佳冬鄉一週預報 <span style="color:var(--t2);font-size:8px">（含釣魚天氣分）</span></div>
       <div class="wx-week">${cells}</div>`;
   }
 
