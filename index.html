@@ -79,6 +79,25 @@ select.sel:focus{border-color:var(--c)}
 .dfc{padding:1px 5px;border-radius:3px;font-size:9px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.25);color:var(--c)}
 .dfc.s1{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.35);color:var(--g);font-weight:700}
 
+/* ─ FISH LEGEND ─ */
+.fish-legend{padding:0 20px 20px}
+.fish-legend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.fl-card{background:var(--bg1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s}
+.fl-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,120,255,.15)}
+.fl-tank{width:100%;height:52px;display:block}
+.fl-body{padding:6px 10px 9px}
+.fl-name-row{display:flex;align-items:center;gap:5px;margin-bottom:1px}
+.fl-swatch{display:inline-block;width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.fl-zh{font-size:12px;font-weight:700;color:var(--t)}
+.fl-en{font-size:9px;color:var(--t2);margin-bottom:4px;font-style:italic}
+.fl-tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px}
+.fl-tag{padding:1px 6px;border-radius:3px;font-size:9px;border:1px solid;line-height:1.5}
+.fl-tag.zone-top{background:rgba(0,212,255,.08);border-color:rgba(0,212,255,.3);color:#00d4ff}
+.fl-tag.zone-mid{background:rgba(0,255,136,.08);border-color:rgba(0,255,136,.3);color:#00ff88}
+.fl-tag.zone-bot{background:rgba(255,140,0,.08);border-color:rgba(255,140,0,.3);color:#ff8c00}
+.fl-tag.spd{background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.25);color:#a78bfa}
+.fl-feat{font-size:9px;color:var(--t2);line-height:1.45}
+
 /* ─ MAIN GRID ─ */
 .wrap{padding:0 20px 20px;display:flex;flex-direction:column;gap:12px}
 .row3{display:grid;grid-template-columns:260px 1fr 1fr;gap:12px}
@@ -343,6 +362,14 @@ select.sel:focus{border-color:var(--c)}
   <div class="ld" style="grid-column:1/-1"><div class="sp"></div>計算預測中...</div>
 </div>
 
+<!-- FISH LEGEND -->
+<div class="sec-hd" style="margin-top:4px">🐟 魚種圖鑑｜各色魚圖對照表（依實際廣鹽性魚種特徵）</div>
+<div class="fish-legend">
+  <div class="fish-legend-grid" id="fishLegendGrid">
+    <div class="ld"><div class="sp"></div>載入中...</div>
+  </div>
+</div>
+
 <!-- ANALYSIS SECTION -->
 <div class="sec-hd">
   ⚡ 當前即時分析
@@ -567,6 +594,79 @@ const BAIT_ENC=[
   {name:'🌡️ 高溫特別注意', desc:'氣溫超過 30°C 時，天然餌易腐敗，每 10–15 分鐘必換新鮮餌，或改用矽膠假餌。'},
 ];
 
+// ── FISH LEGEND ───────────────────────────────────────────────────────────
+// 依文獻與實際外觀整理，9種廣鹽性感潮池魚種特徵
+const SPECIES_LEGEND=[
+  {name:'鱸魚',    en:'Japanese Seabass · Lateolabrax japonicus',
+   zone:'中層', zoneKey:'mid', spd:'快 2.2×',
+   feat:'銀灰細長體・4黑點側線・雙背鰭（前棘刺後軟條）・尖吻端位'},
+  {name:'花身鯻',  en:'Jarbua Terapon · Terapon jarbua',
+   zone:'中層', zoneKey:'mid', spd:'中 1.3×',
+   feat:'亮黃金體色・4條水平黑橫紋・突出棘刺背鰭・體型深高'},
+  {name:'烏魚',    en:'Striped Mullet · Mugil cephalus',
+   zone:'上層', zoneKey:'top', spd:'快 2.0×',
+   feat:'深灰背銀白腹・深叉形尾鰭・魚雷型圓頭・兩片短背鰭'},
+  {name:'虱目魚',  en:'Milkfish · Chanos chanos',
+   zone:'上層', zoneKey:'top', spd:'中 1.7×',
+   feat:'全身鏡面銀光・超深叉大尾鰭（9種中最大）・最細流線型體'},
+  {name:'吳郭魚',  en:'Nile Tilapia · Oreochromis niloticus',
+   zone:'中層', zoneKey:'mid', spd:'慢 1.0×',
+   feat:'橘褐色深體・5條垂直暗紋・長連續背鰭（棘條軟條合一）'},
+  {name:'鯽魚',    en:'Crucian Carp · Carassius auratus',
+   zone:'底層', zoneKey:'bot', spd:'慢 0.7×',
+   feat:'金黃高弧體型・金鱗光澤紋・圓拱背鰭・小下位嘴'},
+  {name:'草魚',    en:'Grass Carp · Ctenopharyngodon idella',
+   zone:'中層', zoneKey:'mid', spd:'中 1.2×',
+   feat:'橄欖綠圓柱體・大端位嘴・粗鱗明顯排列・無側線突出斑'},
+  {name:'三角仔',  en:'Banded Perchlet · Ambassis sp.',
+   zone:'上層', zoneKey:'top', spd:'中 1.0×',
+   feat:'半透明銀藍小體・側線暗帶最明顯・超小型（最小）・群游'},
+  {name:'土虱',    en:'Walking Catfish · Clarias batrachus',
+   zone:'底層', zoneKey:'bot', spd:'極慢 0.4×',
+   feat:'深黑無鱗皮膚・4對鬍鬚（最多）・扁寬頭部・背後脂鰭'}
+];
+
+function renderFishLegend(){
+  const grid=document.getElementById('fishLegendGrid');
+  if(!grid)return;
+  grid.innerHTML='';
+  SPECIES_LEGEND.forEach(sp=>{
+    const cfg=SPECIES_CFG[sp.name];if(!cfg)return;
+    const div=document.createElement('div');div.className='fl-card';
+    // ── Mini fish canvas ──
+    const cv=document.createElement('canvas');cv.className='fl-tank';
+    cv.width=200;cv.height=52;
+    div.appendChild(cv);
+    // ── Text body ──
+    const zoneCls={top:'zone-top',mid:'zone-mid',bot:'zone-bot'}[sp.zoneKey]||'zone-mid';
+    const body=document.createElement('div');body.className='fl-body';
+    body.innerHTML=
+      `<div class="fl-name-row"><span class="fl-swatch" style="background:${cfg.bc};border:1px solid ${cfg.fc}"></span><span class="fl-zh">${sp.name}</span></div>`+
+      `<div class="fl-en">${sp.en}</div>`+
+      `<div class="fl-tags"><span class="fl-tag ${zoneCls}">${sp.zone}</span><span class="fl-tag spd">${sp.spd}</span></div>`+
+      `<div class="fl-feat">${sp.feat}</div>`;
+    div.appendChild(body);
+    grid.appendChild(div);
+    // ── Draw Q-version fish in mini canvas ──
+    requestAnimationFrame(()=>{
+      const ctx=cv.getContext('2d');
+      const bg=ctx.createLinearGradient(0,0,0,52);
+      bg.addColorStop(0,'#001830');bg.addColorStop(1,'#002545');
+      ctx.fillStyle=bg;ctx.fillRect(0,0,200,52);
+      // 波紋線
+      ctx.globalAlpha=.06;
+      for(let i=0;i<2;i++){ctx.beginPath();ctx.moveTo(0,10+i*18);ctx.lineTo(200,10+i*18);ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();}
+      ctx.globalAlpha=1;
+      // 依水層決定 y 位置
+      const yMap={top:16,mid:26,bot:40};
+      const fy=yMap[sp.zoneKey]||26;
+      const sz=(8+Math.random()*3)*cfg.szm*1.30;
+      const f={x:100,y:fy,sz,vx:1,wb:Math.PI*0.15,species:sp.name};
+      drawQFish(ctx,f);
+    });
+  });
+}
+
 // ── INIT ────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',()=>{
   const k=localStorage.getItem('cwa_key')||'';
@@ -578,6 +678,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   buildTideDaySelector();
   renderWeek(tideEvents,parseFloat(d),0);
   renderFishCalendar();
+  renderFishLegend();
   startAnim();
   if(k) loadAll(); else recalc();
 });
@@ -1336,8 +1437,9 @@ function drawQFish(ctx,f){
   const cfg=SPECIES_CFG[species]||SPECIES_CFG['鱸魚'];
   const s=sz;
   ctx.save();
-  ctx.translate(x,y+Math.sin(wb)*1.8);
-  if(vx<0)ctx.scale(-1,1);
+  ctx.translate(x,y+Math.sin(wb)*0.9);  // 減少垂直擺幅，避免誤判方向
+  if(vx<0)ctx.scale(-1,1);              // 依移動方向翻轉（頭永遠在+x方）
+  ctx.rotate(Math.sin(wb)*0.07);        // 游泳體態扭動（正弦傾斜）
   ctx.globalAlpha=.92;
 
   // ═══════════════════════════════════════════════════════
@@ -1564,6 +1666,13 @@ function drawQFish(ctx,f){
       ctx.beginPath();ctx.moveTo(-s*.5+i*s*.3,-s*cfg.ratio*.7);ctx.lineTo(-s*.5+i*s*.3,s*cfg.ratio*.7);ctx.stroke();
     }
   }
+
+  // ── 吻部高光（強化頭部方向辨識，所有魚種統一）──
+  // 頭部永遠在 +x 方向，吻部白點讓「臉朝哪邊」一目了然
+  ctx.globalAlpha=1;
+  const snoutX=cfg.type==='catfish'?s*0.88:cfg.type==='crucian'?s*0.76:s*0.80;
+  ctx.beginPath();ctx.arc(snoutX,0,s*0.075,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.32)';ctx.fill();
 
   // ── 眼睛（共用，位置依魚種微調）──
   ctx.globalAlpha=1;
