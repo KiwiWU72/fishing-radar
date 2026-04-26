@@ -805,63 +805,88 @@ function parseTideApi(raw){
 }
 
 // ── PARSE WEATHER (3h / current) ─────────────────────────────────────────
+// 從任意物件中提取第一個數值型字串（CWA API key 名稱常隨版本不同）
+function _anyVal(obj){
+  if(!obj)return null;
+  if(typeof obj==='string'||typeof obj==='number')return String(obj);
+  const tryKeys=['Temperature','WindSpeed','RelativeHumidity','Weather',
+    'WindDirection','ProbabilityOfPrecipitation','PoP6h','PoP12h','Wx',
+    'temperature','windSpeed','relativeHumidity','weather','windDirection',
+    '溫度','風速','相對濕度','天氣現象','風向','降雨機率','value','Value'];
+  for(const k of tryKeys){if(obj[k]!=null)return String(obj[k]);}
+  for(const v of Object.values(obj)){if(typeof v==='string'&&v.trim())return v.trim();}
+  return null;
+}
 function parseWeather(){
   if(!wxRaw)return null;
   try{
+    // 容錯多種 CWA API 結構
     let loc=null;
-    for(const g of wxRaw?.records?.Locations||[]){
-      const f=(g.Location||[]).find(l=>l.LocationName==='佳冬鄉');
-      if(f){loc=f;break;}
+    const tryPaths=[wxRaw?.records?.Locations,[wxRaw?.records]];
+    for(const arr of tryPaths){
+      if(!Array.isArray(arr))continue;
+      for(const g of arr){
+        const locs=g?.Location||g?.location||(g?.LocationName?[g]:null);
+        if(!locs)continue;
+        const f=locs.find(l=>(l.LocationName||'').includes('佳冬'));
+        if(f){loc=f;break;}
+      }
+      if(loc)break;
     }
-    if(!loc)return null;
+    if(!loc){
+      console.warn('[天氣] 找不到佳冬鄉，raw keys:',Object.keys(wxRaw?.records||{}));
+      return null;
+    }
     const em={};
-    for(const el of loc.WeatherElement||[]) em[el.ElementName]=el.Time||[];
+    for(const el of loc.WeatherElement||loc.weatherElement||[]){
+      em[el.ElementName||el.elementName]=el.Time||el.time||[];
+    }
+    console.log('[天氣] 可用 elements:',Object.keys(em));
     const now=Date.now();
     function cur(names){
-      for(const nm of Array.isArray(names)?names:[names]){
+      for(const nm of [].concat(names)){
         const ts=em[nm]||[];
         for(const t of ts){
-          const dtKey=t.DataTime||t.StartTime;if(!dtKey)continue;
-          const s=new Date(dtKey).getTime();
-          const e=t.EndTime?new Date(t.EndTime).getTime():s+3600000;
-          if(now>=s&&now<=e+3600000){const v=t.ElementValue?.[0];if(v)return v;}
+          const dtKey=t.DataTime||t.StartTime||t.dataTime||t.startTime;if(!dtKey)continue;
+          const s=new Date(dtKey.replace(' ','T')).getTime();
+          const eKey=t.EndTime||t.endTime;
+          const e=eKey?new Date(eKey.replace(' ','T')).getTime():s+10800000;
+          if(now>=s&&now<=e+3600000){const v=t.ElementValue?.[0]||t.elementValue?.[0];if(v)return v;}
         }
-        if(ts.length){const v=ts[0]?.ElementValue?.[0];if(v)return v;}
+        if(ts.length){const v=ts[0]?.ElementValue?.[0]||ts[0]?.elementValue?.[0];if(v)return v;}
       }
       return null;
     }
-    // F-D0047-035 element names may be English OR Chinese depending on API version
-    const wx =cur(['Wx','天氣現象']);
-    const ws =cur(['WS','風速']);
-    const wd =cur(['WD','風向']);
-    const tmp=cur(['T','溫度','平均溫度']);
-    const rh =cur(['RH','相對濕度','平均相對濕度']);
-    const pop=cur(['PoP6h','PoP12h','降雨機率','6小時降雨機率','12小時降雨機率']);
+    const wxEl =cur(['Wx','wx','天氣現象']);
+    const wsEl =cur(['WS','ws','WindSpeed','風速']);
+    const wdEl =cur(['WD','wd','WindDirection','風向']);
+    const tmpEl=cur(['T','Temp','Temperature','溫度','平均溫度','MinT','MaxT']);
+    const rhEl =cur(['RH','rh','RelativeHumidity','相對濕度','平均相對濕度']);
+    const popEl=cur(['PoP6h','PoP12h','PoP','降雨機率','6小時降雨機率','12小時降雨機率']);
 
-    // Extract values with multi-key fallback
-    const rawWindSpd=ws?.WindSpeed??ws?.windSpeed??ws?.Speed??ws?.SPEED??ws?.['風速']??null;
-    const rawWindDir=wd?.WindDirection??wd?.windDirection??wd?.Direction??wd?.['風向']??null;
-    const rawTemp   =tmp?.Temperature??tmp?.temperature??tmp?.TEMPERATURE??tmp?.['溫度']??tmp?.['平均溫度']??null;
-    const rawHumid  =rh?.RelativeHumidity??rh?.relativeHumidity??rh?.Humidity??rh?.['相對濕度']??null;
-    const rawWeather=wx?.Weather??wx?.weather??wx?.WEATHER??wx?.['天氣現象']??null;
-    const rawPop    =pop?.PoP6h??pop?.PoP12h??pop?.ProbabilityOfPrecipitation??pop?.['降雨機率']??null;
+    const rawTemp   =tmpEl?.Temperature??tmpEl?.Temp??_anyVal(tmpEl);
+    const rawWindSpd=wsEl?.WindSpeed??wsEl?.BeaufortScale??_anyVal(wsEl);
+    const rawWindDir=wdEl?.WindDirection??_anyVal(wdEl);
+    const rawHumid  =rhEl?.RelativeHumidity??_anyVal(rhEl);
+    const rawWeather=wxEl?.Weather??wxEl?.Wx??_anyVal(wxEl);
+    const rawPop    =popEl?.PoP6h??popEl?.PoP12h??_anyVal(popEl);
 
-    const windSpd   = rawWindSpd!=null?parseFloat(rawWindSpd):null;
-    const windDir   = rawWindDir||null;
-    const temp      = rawTemp!=null?parseFloat(rawTemp):null;
-    const humid     = rawHumid!=null?parseFloat(rawHumid):null;
-    const weather   = rawWeather||null;
-    const precipitation = rawPop!=null?parseFloat(rawPop):null;
+    const temp    =rawTemp!=null?parseFloat(rawTemp):null;
+    const windSpd =rawWindSpd!=null?parseFloat(rawWindSpd):null;
+    const windDir =rawWindDir||null;
+    const humid   =rawHumid!=null?parseFloat(rawHumid):null;
+    const weather =rawWeather||null;
+    const pop     =rawPop!=null?parseFloat(rawPop):null;
 
-    // Only return data if temperature is available (minimum usable signal)
+    console.log('[天氣] 解析結果:',{temp,windSpd,windDir,humid,weather,pop});
     if(temp==null&&windSpd==null&&weather==null)return null;
     return{
       weather,windSpd,windDir,
-      temp:temp??25,rh:humid??70,pop:precipitation??0,
+      temp:temp??25,rh:humid??70,pop:pop??0,
       hasWind:windSpd!=null,hasWeather:weather!=null,
       hasData:true
     };
-  }catch(e){console.error(e);return null;}
+  }catch(e){console.error('[天氣] 解析錯誤:',e);return null;}
 }
 
 // ── PARSE WEEKLY WEATHER ──────────────────────────────────────────────────
@@ -2052,7 +2077,10 @@ function renderWx(wx){
   // ── 今日即時天氣區塊 ──
   let curHtml='';
   if(!wx){
-    curHtml=`<div style="color:var(--t2);font-size:11px;padding:8px 0">按右上角 ⚙️ 輸入 API Key 以載入即時天氣</div>`;
+    const noKey=!wxRaw;
+    curHtml=noKey
+      ?`<div style="color:var(--t2);font-size:11px;padding:8px 0">⚙️ 請點右上角輸入 CWA API Key 以載入即時天氣</div>`
+      :`<div style="color:#ff8c00;font-size:11px;padding:8px 0">⚠️ 天氣資料已收到但解析失敗，請開 F12 → Console 查看 [天氣] 日誌</div>`;
   }else{
     const temp=wx.temp,rh=wx.rh,windSpd=wx.windSpd||0,pop=wx.pop||0;
     const fl=feelsLike(temp,rh,windSpd);
