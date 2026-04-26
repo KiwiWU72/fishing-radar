@@ -787,7 +787,25 @@ async function loadAll(){
   renderWeek(tideEvents,delay,weekOffset);
   recalc();renderTideTable();
 }
-async function apiFetch(url){const r=await fetch(url);if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}
+// 偵測是否在 GitHub Pages（或任何需要 CORS Proxy 的遠端環境）
+const NEED_PROXY=location.hostname.endsWith('github.io')||location.hostname.endsWith('github.com');
+const CORS_PROXY='https://corsproxy.io/?url=';
+async function apiFetch(url){
+  const fetchUrl=NEED_PROXY?CORS_PROXY+encodeURIComponent(url):url;
+  try{
+    const r=await fetch(fetchUrl);
+    if(!r.ok)throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  }catch(e){
+    // 若直接或 proxy 失敗，再試一次 allorigins 備援
+    if(!NEED_PROXY){
+      const r2=await fetch(CORS_PROXY+encodeURIComponent(url));
+      if(!r2.ok)throw new Error(`HTTP ${r2.status}`);
+      return r2.json();
+    }
+    throw e;
+  }
+}
 
 // ── PARSE TIDE ────────────────────────────────────────────────────────────
 function parseTideApi(raw){
