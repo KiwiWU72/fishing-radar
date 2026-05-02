@@ -79,6 +79,28 @@ select.sel:focus{border-color:var(--c)}
 .dfc{padding:1px 5px;border-radius:3px;font-size:9px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.25);color:var(--c)}
 .dfc.s1{background:rgba(0,255,136,.1);border-color:rgba(0,255,136,.35);color:var(--g);font-weight:700}
 
+/* ─ MONTHLY SCORE CALENDAR ─ */
+.msc-wrap{padding:0 20px 14px}
+.msc-controls{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.msc-title{font-size:13px;font-weight:900;color:var(--c);letter-spacing:1px}
+.msc-sub{font-size:10px;color:var(--t2)}
+.msc-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.msc-dow{font-size:9px;color:var(--t2);text-align:center;padding:3px 0;letter-spacing:.5px}
+.msc-day{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:5px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:72px;position:relative;transition:transform .15s,box-shadow .15s;cursor:default}
+.msc-day:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(0,120,255,.2)}
+.msc-day.today{border-color:rgba(0,212,255,.7);box-shadow:0 0 10px rgba(0,212,255,.2)}
+.msc-day.today::before{content:'今';position:absolute;top:3px;right:4px;font-size:8px;background:var(--c);color:#000;padding:0 3px;border-radius:3px;font-weight:900}
+.msc-day.empty{background:transparent;border-color:transparent;pointer-events:none}
+.msc-day.past{opacity:.45}
+.msc-dn{font-size:13px;font-weight:900;color:var(--t);line-height:1}
+.msc-score{font-size:18px;font-weight:900;line-height:1.1}
+.msc-bar{width:100%;height:3px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;margin-top:1px}
+.msc-bar-fill{height:100%;border-radius:99px}
+.msc-time{font-size:8px;color:var(--t2);margin-top:1px}
+.msc-fish{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+.msc-fc{font-size:7px;padding:0 3px;border-radius:2px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.18);color:var(--c)}
+@media(max-width:640px){.msc-grid{grid-template-columns:repeat(7,1fr);gap:3px}.msc-day{min-height:60px;padding:3px 2px}.msc-score{font-size:15px}}
+
 /* ─ FISH LEGEND ─ */
 .fish-legend{padding:0 20px 20px}
 .fish-legend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
@@ -354,6 +376,26 @@ select.sel:focus{border-color:var(--c)}
   </select>
   <button class="btn btn-s" style="padding:5px 14px" onclick="loadAll()">🔄 更新資料</button>
   <span style="font-size:10px;color:var(--t2);flex:1" id="connStatusLbl"></span>
+</div>
+
+<!-- MONTHLY SCORE CALENDAR -->
+<div class="sec-hd" style="margin-top:6px">
+  📆 月度最佳釣魚分數表｜滿分 100 分
+  <span class="sec-hd-date">
+    <select id="monthSel" class="sel" style="font-size:10px;margin-left:8px" onchange="onMonthChange()">
+      <option value="0">本月</option>
+      <option value="1">下個月</option>
+    </select>
+  </span>
+</div>
+<div class="msc-wrap">
+  <div class="msc-controls">
+    <span class="msc-title" id="mscTitle">載入中...</span>
+    <span class="msc-sub" id="mscSub"></span>
+  </div>
+  <div class="msc-grid" id="mscGrid">
+    <div class="ld" style="grid-column:1/-1"><div class="sp"></div>計算中...</div>
+  </div>
 </div>
 
 <!-- WEEK SECTION -->
@@ -676,6 +718,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   tickClock();setInterval(tickClock,1000);
   setInterval(()=>recalc(),60000);setInterval(loadAll,30*60000);
   buildTideDaySelector();
+  renderMonthlyScores(tideEvents,parseFloat(d),0);
   renderWeek(tideEvents,parseFloat(d),0);
   renderFishCalendar();
   renderFishLegend();
@@ -784,6 +827,7 @@ async function loadAll(){
   document.getElementById('connStatusLbl').textContent=lbl;
   document.getElementById('footLbl').textContent='中央氣象署 CWA Open Data ｜ 更新：'+ts;
   const delay=parseFloat(document.getElementById('delayPick').value);
+  renderMonthlyScores(tideEvents,delay,monthOffset);
   renderWeek(tideEvents,delay,weekOffset);
   recalc();renderTideTable();
 }
@@ -1040,6 +1084,68 @@ const CN_DAY=['','初一','初二','初三','初四','初五','初六','初七',
   '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
 
 // ── 月份魚況月曆渲染 ──────────────────────────────────────────────────────
+// ── MONTHLY SCORE CALENDAR ──────────────────────────────────────────────────
+let monthOffset=0; // 0=本月 1=下個月
+function onMonthChange(){
+  monthOffset=parseInt(document.getElementById('monthSel').value)||0;
+  const delay=parseFloat(document.getElementById('delayPick').value);
+  renderMonthlyScores(tideEvents,delay,monthOffset);
+}
+function renderMonthlyScores(events,delay,offset){
+  offset=offset||0;
+  const grid=document.getElementById('mscGrid');
+  const titleEl=document.getElementById('mscTitle');
+  const subEl=document.getElementById('mscSub');
+  if(!grid)return;
+  const now=new Date();
+  const todayStr=fmtDate(now);
+  // 計算目標月份
+  const tgt=new Date(now.getFullYear(),now.getMonth()+offset,1);
+  const yr=tgt.getFullYear(),mo=tgt.getMonth();
+  const daysInMonth=new Date(yr,mo+1,0).getDate();
+  const firstDow=new Date(yr,mo,1).getDay(); // 0=日 1=一 ...
+  const mNames=['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  titleEl.textContent=`${yr} 年 ${mNames[mo]}`;
+  // 計算全月分數以求均值與最高
+  let allScores=[],maxScore=0,maxDay=0;
+  const scoreCache={};
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const r=calcDayScore(ds,events||[],delay||1.5);
+    scoreCache[d]=r;
+    allScores.push(r.score);
+    if(r.score>maxScore){maxScore=r.score;maxDay=d;}
+  }
+  const avg=Math.round(allScores.reduce((a,b)=>a+b,0)/allScores.length);
+  subEl.textContent=`月均 ${avg} 分 ｜ 最佳 ${mNames[mo].replace('月','')} ${maxDay} 日（${maxScore} 分）`;
+  // 星期標題列
+  const dows=['日','一','二','三','四','五','六'];
+  let html=dows.map(d=>`<div class="msc-dow">${d}</div>`).join('');
+  // 填充前空格
+  for(let i=0;i<firstDow;i++) html+=`<div class="msc-day empty"></div>`;
+  // 每日格子
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const{score,bestHr,topFish}=scoreCache[d];
+    const col=scCol(score);
+    const isToday=ds===todayStr;
+    const isPast=ds<todayStr;
+    const fmtH=h=>{const hh=Math.floor(h),mm=Math.round((h%1)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');};
+    const fishTags=(topFish||[]).slice(0,2).map(f=>`<span class="msc-fc">${f}</span>`).join('');
+    // 週六/週日顏色微調
+    const dow=new Date(yr,mo,d).getDay();
+    const weekendStyle=dow===0?'border-top:2px solid rgba(255,100,100,.35)':dow===6?'border-top:2px solid rgba(100,180,255,.35)':'';
+    html+=`<div class="msc-day${isToday?' today':''}${isPast?' past':''}" style="${weekendStyle}" title="${ds} 最佳 ${fmtH(bestHr)}">
+      <span class="msc-dn" style="color:${isPast?'var(--t2)':'var(--t)'}">${d}</span>
+      <span class="msc-score" style="color:${col}">${score}</span>
+      <div class="msc-bar"><div class="msc-bar-fill" style="width:${score}%;background:${col}"></div></div>
+      <div class="msc-time">⏰ ${fmtH(bestHr)}</div>
+      <div class="msc-fish">${fishTags}</div>
+    </div>`;
+  }
+  grid.innerHTML=html;
+}
+
 function renderFishCalendar(){
   const el=document.getElementById('fishCalendar');if(!el)return;
   const now=new Date();const cm=now.getMonth()+1;
