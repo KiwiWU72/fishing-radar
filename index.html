@@ -1085,12 +1085,25 @@ const CN_DAY=['','初一','初二','初三','初四','初五','初六','初七',
 
 // ── 月份魚況月曆渲染 ──────────────────────────────────────────────────────
 // ── MONTHLY SCORE CALENDAR ──────────────────────────────────────────────────
-let monthOffset=0; // 0=本月 1=下個月
+let monthOffset=0;
 function onMonthChange(){
   monthOffset=parseInt(document.getElementById('monthSel').value)||0;
   const delay=parseFloat(document.getElementById('delayPick').value);
   renderMonthlyScores(tideEvents,delay,monthOffset);
 }
+// 熱度背景色（分數 → 半透明底色，視覺直覺更強）
+function heatBg(s){
+  if(s>=85)return'rgba(0,255,136,.14)';
+  if(s>=70)return'rgba(120,255,60,.10)';
+  if(s>=55)return'rgba(255,215,0,.10)';
+  if(s>=40)return'rgba(255,140,0,.10)';
+  return'rgba(255,60,60,.08)';
+}
+// 農曆日中文（初一~三十）
+const CN_LUNAR=['','初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+  '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+  '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+
 function renderMonthlyScores(events,delay,offset){
   offset=offset||0;
   const grid=document.getElementById('mscGrid');
@@ -1099,51 +1112,92 @@ function renderMonthlyScores(events,delay,offset){
   if(!grid)return;
   const now=new Date();
   const todayStr=fmtDate(now);
-  // 計算目標月份
   const tgt=new Date(now.getFullYear(),now.getMonth()+offset,1);
   const yr=tgt.getFullYear(),mo=tgt.getMonth();
   const daysInMonth=new Date(yr,mo+1,0).getDate();
-  const firstDow=new Date(yr,mo,1).getDay(); // 0=日 1=一 ...
+  const firstDow=new Date(yr,mo,1).getDay();
   const mNames=['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
   titleEl.textContent=`${yr} 年 ${mNames[mo]}`;
-  // 計算全月分數以求均值與最高
-  let allScores=[],maxScore=0,maxDay=0;
-  const scoreCache={};
+
+  // ── 全月分數計算 ──
+  let allScores=[],maxScore=0,maxDay=0,springCount=0;
+  const cache={};
   for(let d=1;d<=daysInMonth;d++){
     const ds=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const r=calcDayScore(ds,events||[],delay||1.5);
-    scoreCache[d]=r;
+    cache[d]=r;
     allScores.push(r.score);
     if(r.score>maxScore){maxScore=r.score;maxDay=d;}
+    if(r.tidalBonus>=18)springCount++;
   }
   const avg=Math.round(allScores.reduce((a,b)=>a+b,0)/allScores.length);
-  subEl.textContent=`月均 ${avg} 分 ｜ 最佳 ${mNames[mo].replace('月','')} ${maxDay} 日（${maxScore} 分）`;
-  // 星期標題列
+  subEl.textContent=`月均 ${avg} 分 ｜ 最佳 ${mNames[mo].slice(0,-1)} ${maxDay} 日（${maxScore} 分）｜大潮 ${springCount} 天`;
+
+  // ── 星期標題 ──
   const dows=['日','一','二','三','四','五','六'];
-  let html=dows.map(d=>`<div class="msc-dow">${d}</div>`).join('');
-  // 填充前空格
-  for(let i=0;i<firstDow;i++) html+=`<div class="msc-day empty"></div>`;
-  // 每日格子
+  let html=dows.map(dw=>`<div class="msc-dow">${dw}</div>`).join('');
+  for(let i=0;i<firstDow;i++)html+=`<div class="msc-day empty"></div>`;
+
+  // ── 每日格子 ──
   for(let d=1;d<=daysInMonth;d++){
     const ds=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const{score,bestHr,topFish}=scoreCache[d];
+    const{score,rangeStr,topFish,tidalLabel,lunarDay}=cache[d];
     const col=scCol(score);
+    const bg=heatBg(score);
     const isToday=ds===todayStr;
     const isPast=ds<todayStr;
-    const fmtH=h=>{const hh=Math.floor(h),mm=Math.round((h%1)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');};
-    const fishTags=(topFish||[]).slice(0,2).map(f=>`<span class="msc-fc">${f}</span>`).join('');
-    // 週六/週日顏色微調
+    const isSpring=tidalLabel.startsWith('大潮');
+    const ld=lunarDay||getLunarDay(new Date(ds+'T12:00:00+08:00'));
+    const ldTxt=CN_LUNAR[ld]||`農${ld}`;
+    const isLunarSpecial=ld===1||ld===15;
     const dow=new Date(yr,mo,d).getDay();
-    const weekendStyle=dow===0?'border-top:2px solid rgba(255,100,100,.35)':dow===6?'border-top:2px solid rgba(100,180,255,.35)':'';
-    html+=`<div class="msc-day${isToday?' today':''}${isPast?' past':''}" style="${weekendStyle}" title="${ds} 最佳 ${fmtH(bestHr)}">
-      <span class="msc-dn" style="color:${isPast?'var(--t2)':'var(--t)'}">${d}</span>
+    // 框線：大潮橘框、今天藍框、週末微調
+    let borderStyle=`border:1px solid var(--bd)`;
+    if(isToday)borderStyle=`border:1.5px solid rgba(0,212,255,.8)`;
+    else if(isSpring)borderStyle=`border:1.5px solid rgba(255,140,0,.7)`;
+    else if(dow===0)borderStyle=`border:1px solid rgba(255,100,100,.3)`;
+    else if(dow===6)borderStyle=`border:1px solid rgba(100,180,255,.3)`;
+    const fishTags=(topFish||[]).slice(0,2).map(f=>`<span class="msc-fc">${f}</span>`).join('');
+    // 大潮圖示
+    const springBadge=isSpring?`<span style="position:absolute;top:3px;left:4px;font-size:8px;color:#ff8c00;line-height:1">🌊</span>`:'';
+    const todayBadge=isToday?`<span style="position:absolute;top:3px;right:4px;font-size:8px;background:var(--c);color:#000;padding:0 3px;border-radius:3px;font-weight:900;line-height:1.5">今</span>`:'';
+    html+=`<div class="msc-day${isPast?' past':''}"
+      style="${borderStyle};background:${bg}"
+      title="${ds} | 最佳區間 ${rangeStr} | ${tidalLabel} | 農曆${ldTxt}">
+      ${springBadge}${todayBadge}
+      <span class="msc-dn" style="color:${isPast?'rgba(208,228,255,.5)':'var(--t)'}">${d}</span>
+      <span style="font-size:8px;color:${isLunarSpecial?'#ff8c00':'var(--t2)'};">${ldTxt}${isLunarSpecial?'🌕':''}</span>
       <span class="msc-score" style="color:${col}">${score}</span>
       <div class="msc-bar"><div class="msc-bar-fill" style="width:${score}%;background:${col}"></div></div>
-      <div class="msc-time">⏰ ${fmtH(bestHr)}</div>
+      <div class="msc-time" style="font-size:8px;color:var(--t2)">${rangeStr}</div>
       <div class="msc-fish">${fishTags}</div>
     </div>`;
   }
+
+  // ── 計算原理說明 ──
   grid.innerHTML=html;
+  // 原理說明（插入格子下方）
+  const wrap=grid.parentElement;
+  let legend=wrap.querySelector('.msc-legend');
+  if(!legend){legend=document.createElement('div');legend.className='msc-legend';wrap.appendChild(legend);}
+  legend.innerHTML=`
+  <div style="margin-top:12px;padding:10px 12px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;font-size:9.5px;color:var(--t2);line-height:1.9">
+    <span style="color:var(--c);font-weight:700;font-size:10px">📐 分數計算原理（滿分 100）</span><br>
+    <span style="color:var(--t)">① 基礎分 50</span><br>
+    <span style="color:#00ff88">② 潮相加成</span>　退七分水 <b>+30</b>｜漲七 <b>+28</b>｜退三 <b>+25</b>｜漲三 <b>+24</b>｜活水 <b>+8</b>｜停潮 <b>−20</b><br>
+    <span style="color:#ffd700">③ 時段加成</span>　黃昏 15–18時 <b>+15</b>（DO 顛峰）｜黎明 4–7時 <b>+5</b><br>
+    <span style="color:#ff8c00">④ 潮汐量級</span>　🌊大潮（初一/十五，潮差≥85cm）<b>+18</b>｜中潮 <b>+8</b>｜小潮（弦月） <b>−8</b><br>
+    <span style="color:var(--t2)">說明：大潮時月日引潮力疊加，潮差最大、流速最強，感潮野生池中掠食魚趨流反應（rheotaxis）最激烈，咬況顯著提升。三/七分水為流速激增/頂峰時段，是最具攻擊性的黃金時期。</span>
+  </div>
+  <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;font-size:9px">
+    <span style="padding:2px 7px;border-radius:5px;background:rgba(0,255,136,.14);border:1px solid rgba(0,255,136,.3);color:#00ff88">● 85+ 極佳</span>
+    <span style="padding:2px 7px;border-radius:5px;background:rgba(120,255,60,.10);border:1px solid rgba(120,255,60,.3);color:#7fff44">● 70–84 良好</span>
+    <span style="padding:2px 7px;border-radius:5px;background:rgba(255,215,0,.10);border:1px solid rgba(255,215,0,.3);color:#ffd700">● 55–69 普通</span>
+    <span style="padding:2px 7px;border-radius:5px;background:rgba(255,140,0,.10);border:1px solid rgba(255,140,0,.3);color:#ff8c00">● 40–54 較差</span>
+    <span style="padding:2px 7px;border-radius:5px;background:rgba(255,60,60,.08);border:1px solid rgba(255,60,60,.3);color:#ff3c3c">● &lt;40 不佳</span>
+    <span style="padding:2px 7px;border-radius:5px;background:rgba(255,140,0,.08);border:1px solid rgba(255,140,0,.5);color:#ff8c00">🌊 大潮日</span>
+    <span style="padding:2px 7px;border-radius:5px;background:transparent;border:1px solid rgba(255,140,0,.4);color:#ff8c00">🌕 初一/十五</span>
+  </div>`;
 }
 
 function renderFishCalendar(){
@@ -1171,23 +1225,55 @@ function renderFishCalendar(){
 }
 
 // ── 7-DAY SCORE ───────────────────────────────────────────────────────────
+// 評分公式（滿分 100）：
+//   基礎分 50
+//   + 潮相：退七 +30、漲七 +28、退三 +25、漲三 +24、活水 +8、停潮 -20
+//   + 時段：黃昏 15-18時 +15、黎明 4-7時 +5
+//   + 潮汐量級（大潮/中潮/小潮）：大潮 +18、中潮 +8、小潮 -8
+//   上限 100、下限 0
 function calcDayScore(dayStr,events,delay){
   const base=new Date(dayStr+'T00:00:00+08:00');
+  // ── 潮差量級加成（大潮 vs 小潮）──
+  // 優先用實際潮汐資料；無資料時退用農曆推算
+  let tidalBonus=8,tidalLabel='中潮',tidalRange=null;
+  const dayEvts=(events||[]).filter(e=>fmtDate(e.dt)===dayStr);
+  if(dayEvts.length>=2){
+    const hts=dayEvts.map(e=>e.height);
+    tidalRange=Math.max(...hts)-Math.min(...hts);
+    if(tidalRange>=85){tidalBonus=18;tidalLabel='大潮';}
+    else if(tidalRange>=58){tidalBonus=8;tidalLabel='中潮';}
+    else{tidalBonus=-8;tidalLabel='小潮';}
+  }else{
+    // 農曆估算：初一/十五前後2天為大潮
+    const ld=getLunarDay(base);
+    const dist=Math.min(Math.abs(ld-1),Math.abs(ld-15),Math.abs(ld-29));
+    if(dist<=2){tidalBonus=18;tidalLabel='大潮(農曆估)';}
+    else if(dist<=6){tidalBonus=5;tidalLabel='中潮(農曆估)';}
+    else{tidalBonus=-8;tidalLabel='小潮(農曆估)';}
+  }
   let best=25,bestHr=9,bestPhase='flowing';
   for(let h=0;h<24;h+=0.5){
     const t=new Date(base.getTime()+h*3600000);
     const ph=getTidePhaseAt(events,delay,t);
     let s=50;
     const pk=ph?.phase||'flowing';
-    if(pk==='sanfen')s+=25;else if(pk==='qifen')s+=30;else if(pk==='slack')s-=20;else if(pk==='flowing')s+=8;
-    if(h>=15&&h<18)s+=15;if(h>=4&&h<7)s+=5;
+    // 潮相評分（rheotaxis 觸發強度 + 掠食魚趨流行為）
+    if(pk==='qifen')s+=30;else if(pk==='rising_qifen')s+=28;
+    else if(pk==='sanfen')s+=25;else if(pk==='rising_sanfen')s+=24;
+    else if(pk==='slack')s-=20;else if(pk==='flowing')s+=8;
+    // 時段評分（DO 日週期 + 光線驅動捕食行為）
+    if(h>=15&&h<18)s+=15;else if(h>=4&&h<7)s+=5;
+    // 潮汐量級（大潮流速快，感應掠食魚更活躍）
+    s+=tidalBonus;
     s=Math.max(0,Math.min(100,Math.round(s)));
     if(s>best){best=s;bestHr=h;bestPhase=pk;}
   }
-  const rS=Math.max(0,bestHr-1),rE=Math.min(23.5,bestHr+1);
+  // 最佳時段前後 1.5 小時作為建議區間
+  const rS=Math.max(0,bestHr-1.5),rE=Math.min(23.5,bestHr+1.5);
   const fmt=h=>{const hh=Math.floor(h),mm=Math.round((h%1)*60);return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');};
   const topFish=(FISH_MAP[bestPhase]||FISH_MAP.default).slice(0,3);
-  return{score:best,bestHr,rangeStr:fmt(rS)+'~'+fmt(rE),topFish};
+  const ld=getLunarDay(base);
+  return{score:best,bestHr,rangeStr:fmt(rS)+'~'+fmt(rE),topFish,tidalBonus,tidalLabel,tidalRange,lunarDay:ld};
 }
 
 // ── CONTEXTUAL FISH SELECTION ──────────────────────────────────────────────
